@@ -1,0 +1,19 @@
+appId: com.clipboard.manager
+productName: ClipboardManager
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - out
+  - resources
+win:
+  target:
+    - nsis
+  icon: resources/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+extraResources:
+  - from: node_modules/sql.js/dist/sql-wasm.wasm
+    to: sql-wasm.wasm
