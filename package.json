@@ -9,7 +9,7 @@
     "preview": "electron-vite preview",
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-vite build && electron-builder"
+    "dist": "electron-vite build && electron-builder --win -c.electronDist=node_modules/electron/dist -c.electronVersion=43.1.1"
   },
   "keywords": ["clipboard", "history", "windows"],
   "author": "",
