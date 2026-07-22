@@ -1,13 +1,16 @@
 import { useStore } from '../stores/useStore'
 
 interface ConfirmDialogProps {
-  type: 'delete' | 'clearAll'
+  type: 'delete' | 'clearAll' | 'batchDelete'
 }
 
 export default function ConfirmDialog({ type }: ConfirmDialogProps) {
   const confirmDeleteId = useStore((s) => s.confirmDeleteId)
   const setConfirmDeleteId = useStore((s) => s.setConfirmDeleteId)
   const setConfirmClearAll = useStore((s) => s.setConfirmClearAll)
+  const setConfirmBatchDelete = useStore((s) => s.setConfirmBatchDelete)
+  const selectedIds = useStore((s) => s.selectedIds)
+  const batchDelete = useStore((s) => s.batchDelete)
   const loadHistory = useStore((s) => s.loadHistory)
   const searchQuery = useStore((s) => s.searchQuery)
   const currentPage = useStore((s) => s.currentPage)
@@ -19,6 +22,9 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
     } else if (type === 'clearAll') {
       await window.api.clearAllHistory()
       setConfirmClearAll(false)
+    } else if (type === 'batchDelete') {
+      await batchDelete()
+      setConfirmBatchDelete(false)
     }
     const filter = currentPage === 'favorites' ? 'favorites' : 'all'
     await loadHistory(searchQuery, filter)
@@ -27,27 +33,31 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
   const handleCancel = () => {
     if (type === 'delete') {
       setConfirmDeleteId(null)
+    } else if (type === 'batchDelete') {
+      setConfirmBatchDelete(false)
     } else {
       setConfirmClearAll(false)
     }
   }
 
   return (
-    <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-50" onClick={handleCancel}>
+    <div className="absolute inset-0 bg-black/20 dark:bg-black/50 flex items-center justify-center z-50" onClick={handleCancel}>
       <div
-        className="no-drag bg-white rounded-xl p-5 mx-4 shadow-xl border border-gray-100 max-w-xs w-full"
+        className="no-drag bg-white dark:bg-gray-800 rounded-xl p-5 mx-4 shadow-xl border border-gray-100 dark:border-gray-700 max-w-xs w-full"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center mb-4">
           <span className="text-3xl">
-            {type === 'delete' ? '🗑️' : '⚠️'}
+            {type === 'delete' ? '🗑️' : type === 'batchDelete' ? '🗑️' : '⚠️'}
           </span>
-          <h3 className="text-sm font-medium text-gray-800 mt-2">
-            {type === 'delete' ? '确认删除这条记录？' : '确认清空全部记录？'}
+          <h3 className="text-sm font-medium text-gray-800 dark:text-gray-100 mt-2">
+            {type === 'delete' ? '确认删除这条记录？' : type === 'batchDelete' ? `确认删除 ${selectedIds.size} 条记录？` : '确认清空全部记录？'}
           </h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
             {type === 'delete'
               ? '删除后无法恢复'
+              : type === 'batchDelete'
+              ? `将删除选中的 ${selectedIds.size} 条记录，此操作无法恢复`
               : '此操作将删除所有历史记录（不包括贴图），无法恢复'}
           </p>
         </div>
@@ -55,19 +65,15 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
         <div className="flex gap-2">
           <button
             onClick={handleCancel}
-            className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition-colors"
+            className="flex-1 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
           >
             取消
           </button>
           <button
             onClick={handleConfirm}
-            className={`flex-1 py-2 rounded-lg text-white text-sm font-medium transition-colors ${
-              type === 'delete'
-                ? 'bg-red-500 hover:bg-red-600'
-                : 'bg-red-500 hover:bg-red-600'
-            }`}
+            className="flex-1 py-2 rounded-lg text-white text-sm font-medium bg-red-500 hover:bg-red-600 transition-colors"
           >
-            {type === 'delete' ? '删除' : '清空全部'}
+            {type === 'delete' ? '删除' : type === 'batchDelete' ? '删除' : '清空全部'}
           </button>
         </div>
       </div>

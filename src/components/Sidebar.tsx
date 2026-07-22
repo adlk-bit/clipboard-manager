@@ -13,7 +13,7 @@ export default function Sidebar() {
   const setCurrentPage = useStore((s) => s.setCurrentPage)
 
   return (
-    <div className="w-20 shrink-0 bg-white border-r border-primary-100 flex flex-col items-center py-4 gap-2">
+    <div className="w-20 shrink-0 bg-white dark:bg-gray-900 border-r border-primary-100 dark:border-gray-700 flex flex-col items-center py-4 gap-2">
       {/* App icon */}
       <div className="w-10 h-10 rounded-xl bg-primary-400 flex items-center justify-center text-white text-lg font-bold mb-4 shadow-sm">
         C
@@ -26,8 +26,8 @@ export default function Sidebar() {
           onClick={() => setCurrentPage(item.id)}
           className={`no-drag flex flex-col items-center gap-0.5 w-16 py-2 rounded-xl transition-colors ${
             currentPage === item.id
-              ? 'bg-primary-100 text-primary-700'
-              : 'text-gray-500 hover:bg-primary-50 hover:text-primary-600'
+              ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-gray-800 hover:text-primary-600 dark:hover:text-primary-400'
           }`}
         >
           <span className="text-xl">{item.icon}</span>

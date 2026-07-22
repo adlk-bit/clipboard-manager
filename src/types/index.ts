@@ -23,6 +23,7 @@ export interface ElectronApi {
   toggleFavorite: (id: number) => Promise<void>
   deleteHistory: (id: number) => Promise<void>
   clearAllHistory: () => Promise<void>
+  batchDeleteHistory: (ids: number[]) => Promise<number>
   copyToClipboard: (item: HistoryItem) => Promise<void>
   getSetting: (key: string) => Promise<string | null>
   setSetting: (key: string, value: string) => Promise<void>

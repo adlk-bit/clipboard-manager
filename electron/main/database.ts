@@ -5,9 +5,31 @@ import fs from 'fs'
 
 let db: SqlJsDatabase
 const DB_PATH = path.join(app.getPath('userData'), 'clipboard.db')
+let saveTimer: NodeJS.Timeout | null = null
+let savePending = false
 
+/** Debounced save — batches rapid writes into a single disk flush */
 function saveDb() {
   if (!db) return
+  savePending = true
+  if (saveTimer) return // already scheduled
+  saveTimer = setTimeout(() => {
+    saveTimer = null
+    savePending = false
+    const data = db.export()
+    const buffer = Buffer.from(data)
+    fs.writeFileSync(DB_PATH, buffer)
+  }, 500)
+}
+
+/** Immediate save for shutdown — flushes any pending debounce */
+function saveDbSync() {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+  if (!db || !savePending) return
+  savePending = false
   const data = db.export()
   const buffer = Buffer.from(data)
   fs.writeFileSync(DB_PATH, buffer)
@@ -73,6 +95,7 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
     setSetting('retention_days', '3')
     setSetting('hotkey', 'Ctrl+Shift+V')
     setSetting('auto_hide', 'true')
+    setSetting('dark_mode', 'false')
   }
 
   saveDb()
@@ -215,6 +238,32 @@ export function clearAllHistory(): void {
   saveDb()
 }
 
+export function batchDeleteHistory(ids: number[]): number {
+  if (!db || ids.length === 0) return 0
+  try {
+    const placeholders = ids.map(() => '?').join(',')
+    // Delete associated image files
+    const stmt = db.prepare(`SELECT image_path FROM clipboard_history WHERE id IN (${placeholders})`)
+    stmt.bind(ids)
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      const imgPath = row.image_path as string | null
+      if (imgPath && fs.existsSync(imgPath)) {
+        fs.unlinkSync(imgPath)
+      }
+    }
+    stmt.free()
+
+    // Delete records
+    db.run(`DELETE FROM clipboard_history WHERE id IN (${placeholders})`, ids)
+    const changes = db.getRowsModified()
+    saveDb()
+    return changes
+  } catch {
+    return 0
+  }
+}
+
 export function deleteExpiredHistory(retentionDays: number): number {
   if (!db || retentionDays <= 0) return 0
   try {
@@ -305,7 +354,7 @@ export function importHistory(jsonStr: string): number {
 
 export function closeDatabase(): void {
   if (db) {
-    saveDb()
+    saveDbSync()
     db.close()
   }
 }

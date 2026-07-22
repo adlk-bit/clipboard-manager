@@ -14,6 +14,8 @@ export default function App() {
   const loadHistory = useStore((s) => s.loadHistory)
   const confirmDeleteId = useStore((s) => s.confirmDeleteId)
   const confirmClearAll = useStore((s) => s.confirmClearAll)
+  const confirmBatchDelete = useStore((s) => s.confirmBatchDelete)
+  const darkMode = useStore((s) => s.darkMode)
 
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'info' } | null>(null)
   const [toastKey, setToastKey] = useState(0)
@@ -35,10 +37,10 @@ export default function App() {
     <Layout>
       <Sidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
+      <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900">
         {/* Header */}
-        <div className="drag-region flex items-center justify-between px-4 py-3 border-b border-primary-100 shrink-0">
-          <h1 className="text-sm font-semibold text-primary-800 no-drag">
+        <div className="drag-region flex items-center justify-between px-4 py-3 border-b border-primary-100 dark:border-gray-700 shrink-0">
+          <h1 className="text-sm font-semibold text-primary-800 dark:text-primary-200 no-drag">
             {currentPage === 'all' && '剪贴板历史'}
             {currentPage === 'favorites' && '收藏记录'}
             {currentPage === 'stickers' && '贴图库'}
@@ -59,7 +61,7 @@ export default function App() {
         </div>
 
         {/* Status bar */}
-        <div className="px-4 py-1.5 border-t border-primary-100 bg-primary-50 text-xs text-primary-600 shrink-0">
+        <div className="px-4 py-1.5 border-t border-primary-100 dark:border-gray-700 bg-primary-50 dark:bg-gray-800 text-xs text-primary-600 dark:text-gray-400 shrink-0">
           {currentPage === 'all' && <span>自动记录中 · 点击卡片右侧 📋 图标复制 · 按 Ctrl+Shift+V 唤起窗口</span>}
           {currentPage === 'favorites' && <span>收藏的记录不受过期清理影响</span>}
           {currentPage === 'stickers' && <span>点击贴图即可复制到剪贴板</span>}
@@ -73,6 +75,7 @@ export default function App() {
       {/* Confirm dialogs */}
       {confirmDeleteId !== null && <ConfirmDialog type="delete" />}
       {confirmClearAll && <ConfirmDialog type="clearAll" />}
+      {confirmBatchDelete && <ConfirmDialog type="batchDelete" />}
     </Layout>
   )
 }

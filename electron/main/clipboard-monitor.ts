@@ -1,12 +1,13 @@
 import { clipboard, nativeImage, app } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import { insertHistory, getLastHistory } from './database'
+import { insertHistory } from './database'
 
 let lastTextContent = ''
 let lastImageHash = ''
 let monitorTimer: NodeJS.Timeout | null = null
 let imagesDir: string | null = null
+let lastInsertedId: number | null = null
 
 function getImagesDir(): string {
   if (!imagesDir) {
@@ -43,10 +44,7 @@ export function checkClipboard() {
       lastImageHash = imgHash
       try {
         const filepath = saveImageFile(image)
-        const last = getLastHistory()
-        if (!last || last.type !== 'image' || last.image_path !== filepath) {
-          insertHistory('image', null, filepath)
-        }
+        insertHistory('image', null, filepath)
       } catch (e) {
         console.error('Failed to save clipboard image:', e)
       }
@@ -62,10 +60,7 @@ export function checkClipboard() {
 
     if (trimmed !== lastTextContent) {
       lastTextContent = trimmed
-      const last = getLastHistory()
-      if (!last || last.type !== 'text' || last.content !== trimmed) {
-        insertHistory('text', trimmed, null)
-      }
+      insertHistory('text', trimmed, null)
     }
   }
 }

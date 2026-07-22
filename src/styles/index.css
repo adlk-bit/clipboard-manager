@@ -24,6 +24,12 @@ body {
   border: 1px solid rgba(100, 181, 246, 0.3);
 }
 
+.dark #root {
+  background: #1e1e2e;
+  border-color: rgba(100, 181, 246, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 /* Drag region for frameless window */
 .drag-region {
   -webkit-app-region: drag;
@@ -47,6 +53,14 @@ body {
   border-radius: 3px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #4a4a6a;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6a6a8a;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #64B5F6;
 }
@@ -59,6 +73,10 @@ body {
 .history-card:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(66, 165, 245, 0.2);
+}
+
+.dark .history-card:hover {
+  box-shadow: 0 4px 12px rgba(66, 165, 245, 0.15);
 }
 
 .history-card.fade-out {
@@ -84,6 +102,10 @@ body {
 .sticker-card:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(66, 165, 245, 0.3);
+}
+
+.dark .sticker-card:hover {
+  box-shadow: 0 4px 12px rgba(66, 165, 245, 0.2);
 }
 
 .sticker-card img {

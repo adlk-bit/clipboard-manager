@@ -8,6 +8,7 @@ const api = {
   toggleFavorite: (id: number) => ipcRenderer.invoke('history:toggleFavorite', id),
   deleteHistory: (id: number) => ipcRenderer.invoke('history:delete', id),
   clearAllHistory: () => ipcRenderer.invoke('history:clearAll'),
+  batchDeleteHistory: (ids: number[]) => ipcRenderer.invoke('history:batchDelete', ids),
   copyToClipboard: (item: any) => ipcRenderer.invoke('history:copyToClipboard', item),
 
   // Settings

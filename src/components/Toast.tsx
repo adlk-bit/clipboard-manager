@@ -30,7 +30,7 @@ export default function Toast({ message, type = 'success', onClose }: ToastProps
       } ${
         type === 'success'
           ? 'bg-primary-500 text-white'
-          : 'bg-gray-700 text-white'
+          : 'bg-gray-700 dark:bg-gray-600 text-white'
       }`}
     >
       {message}

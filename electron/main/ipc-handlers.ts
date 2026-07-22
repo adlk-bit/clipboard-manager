@@ -8,6 +8,7 @@ import {
   toggleFavorite,
   deleteHistory,
   clearAllHistory,
+  batchDeleteHistory,
   getSetting,
   setSetting,
   insertSticker,
@@ -51,6 +52,10 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('history:clearAll', () => {
     clearAllHistory()
+  })
+
+  ipcMain.handle('history:batchDelete', (_event, ids: number[]) => {
+    return batchDeleteHistory(ids)
   })
 
   ipcMain.handle('history:copyToClipboard', (_event, item: HistoryItem) => {
