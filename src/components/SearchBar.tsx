@@ -11,7 +11,7 @@ export default function SearchBar() {
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="搜索..."
-        className="no-drag w-36 text-xs px-3 py-1.5 rounded-lg border border-primary-200 dark:border-gray-600 bg-primary-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary-400 dark:focus:border-primary-500 focus:ring-1 focus:ring-primary-300 dark:focus:ring-primary-700 transition-all"
+        className="no-drag w-40 text-xs px-3 py-1.5 rounded-[10px] border border-transparent bg-[#ededf0] dark:bg-white/10 text-[#3a3a3c] dark:text-[#f5f5f7] placeholder-[#8e8e93] focus:outline-none focus:bg-white dark:focus:bg-[#3a3a3c] focus:border-[#0a84ff]/45 focus:ring-2 focus:ring-[#0a84ff]/15 transition-[background-color,border-color,box-shadow] duration-150"
       />
       {searchQuery && (
         <button

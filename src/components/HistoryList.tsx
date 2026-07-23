@@ -16,8 +16,13 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
   const selectAll = useStore((s) => s.selectAll)
   const clearSelection = useStore((s) => s.clearSelection)
   const setConfirmBatchDelete = useStore((s) => s.setConfirmBatchDelete)
+  const favoriteFolder = useStore((s) => s.favoriteFolder)
+  const favoriteFolders = useStore((s) => s.favoriteFolders)
+  const setFavoriteFolder = useStore((s) => s.setFavoriteFolder)
 
   const allSelected = historyItems.length > 0 && selectedIds.size === historyItems.length
+  const pinnedFavorites = currentPage === 'favorites' ? historyItems.filter((item) => item.is_pinned) : []
+  const regularItems = currentPage === 'favorites' ? historyItems.filter((item) => !item.is_pinned) : historyItems
 
   const handleToggleSelectionMode = () => {
     if (selectionMode) {
@@ -57,7 +62,7 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
     <div className="flex flex-col h-full">
       {/* Batch action bar */}
       {selectionMode && (
-        <div className="no-drag flex items-center justify-between px-4 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-100 dark:border-gray-700 shrink-0">
+        <div className="no-drag flex items-center justify-between px-5 py-2.5 bg-[#eaf4ff]/80 dark:bg-[#0a84ff]/10 border-b border-[#c6e2ff] dark:border-[#0a84ff]/20 shrink-0">
           <div className="flex items-center gap-2">
             <button
               onClick={handleSelectAll}
@@ -99,8 +104,26 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
       )}
 
       {/* Card list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {historyItems.map((item) => (
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+        {currentPage === 'favorites' && !selectionMode && (
+          <div className="no-drag flex gap-1.5 overflow-x-auto pb-1.5">
+            <button onClick={() => setFavoriteFolder('')} className={`shrink-0 rounded-full px-2 py-1 text-[10px] ${favoriteFolder === '' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>全部</button>
+            {favoriteFolders.map((folder) => (
+              <button key={folder} onClick={() => setFavoriteFolder(folder)} className={`shrink-0 rounded-full px-2 py-1 text-[10px] ${favoriteFolder === folder ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>{folder}</button>
+            ))}
+          </div>
+        )}
+
+        {pinnedFavorites.length > 0 && (
+          <div className="pt-1 text-[10px] font-medium text-primary-500 dark:text-primary-400">置顶收藏</div>
+        )}
+        {pinnedFavorites.map((item) => (
+          <HistoryCard key={item.id} item={item} onCopy={onCopy} />
+        ))}
+        {pinnedFavorites.length > 0 && regularItems.length > 0 && (
+          <div className="pt-2 text-[10px] font-medium text-gray-400 dark:text-gray-500">全部收藏</div>
+        )}
+        {regularItems.map((item) => (
           <HistoryCard key={item.id} item={item} onCopy={onCopy} />
         ))}
 

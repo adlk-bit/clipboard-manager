@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { HistoryItem, StickerItem, PageView } from '../types'
+import type { HistoryItem, StickerItem, PageView, HistoryStats } from '../types'
 
 interface AppState {
   // Navigation
@@ -10,6 +10,12 @@ interface AppState {
   historyItems: HistoryItem[]
   setHistoryItems: (items: HistoryItem[]) => void
   loadHistory: (search?: string, filter?: string) => Promise<void>
+  keyboardActiveId: number | null
+  setKeyboardActiveId: (id: number | null) => void
+  favoriteFolder: string
+  favoriteFolders: string[]
+  setFavoriteFolder: (folder: string) => void
+  loadFavoriteFolders: () => Promise<void>
 
   // Stickers
   stickers: StickerItem[]
@@ -25,9 +31,17 @@ interface AppState {
   retentionDays: string
   autoHide: boolean
   darkMode: boolean
+  hotkey: string
+  maxHistoryItems: string
+  maxImageSizeMb: string
+  historyStats: HistoryStats
   setRetentionDays: (days: string) => void
   setAutoHide: (hide: boolean) => void
   setDarkMode: (on: boolean) => void
+  setHotkey: (hotkey: string) => void
+  setMaxHistoryItems: (value: string) => void
+  setMaxImageSizeMb: (value: string) => void
+  loadHistoryStats: () => Promise<void>
   loadSettings: () => Promise<void>
   saveSettings: (key: string, value: string) => Promise<void>
 
@@ -59,16 +73,35 @@ export const useStore = create<AppState>((set, get) => ({
     } else if (page === 'settings') {
       get().loadSettings()
     } else {
+      if (page !== 'favorites') set({ favoriteFolder: '' })
       get().loadHistory('', page === 'favorites' ? 'favorites' : 'all')
+      if (page === 'favorites') get().loadFavoriteFolders()
     }
   },
 
   // History
   historyItems: [],
   setHistoryItems: (items) => set({ historyItems: items }),
+  keyboardActiveId: null,
+  setKeyboardActiveId: (id) => set({ keyboardActiveId: id }),
+  favoriteFolder: '',
+  favoriteFolders: [],
+  setFavoriteFolder: (folder) => {
+    set({ favoriteFolder: folder })
+    get().loadHistory(get().searchQuery, 'favorites')
+  },
+  loadFavoriteFolders: async () => {
+    try {
+      set({ favoriteFolders: await window.api.getFavoriteFolders() })
+    } catch (e) {
+      console.error('Failed to load favorite folders:', e)
+    }
+  },
   loadHistory: async (search, filter) => {
     try {
-      const items = await window.api.getHistory(search || '', filter || 'all')
+      const activeFilter = filter || 'all'
+      const folder = activeFilter === 'favorites' ? get().favoriteFolder : ''
+      const items = await window.api.getHistory(search || '', activeFilter, folder)
       set({ historyItems: items })
     } catch (e) {
       console.error('Failed to load history:', e)
@@ -98,7 +131,7 @@ export const useStore = create<AppState>((set, get) => ({
     const filter = currentPage === 'favorites' ? 'favorites' : 'all'
     if (currentPage === 'all' || currentPage === 'favorites') {
       set({ _searchTimer: setTimeout(() => {
-        get().loadHistory(query, filter)
+      get().loadHistory(query, filter)
       }, 200) })
     }
   },
@@ -107,19 +140,40 @@ export const useStore = create<AppState>((set, get) => ({
   retentionDays: '3',
   autoHide: true,
   darkMode: false,
+  hotkey: 'Ctrl+Shift+V',
+  maxHistoryItems: '500',
+  maxImageSizeMb: '10',
+  historyStats: { itemCount: 0, imageBytes: 0 },
   setRetentionDays: (days) => set({ retentionDays: days }),
   setAutoHide: (hide) => set({ autoHide: hide }),
   setDarkMode: (on) => set({ darkMode: on }),
+  setHotkey: (hotkey) => set({ hotkey }),
+  setMaxHistoryItems: (value) => set({ maxHistoryItems: value }),
+  setMaxImageSizeMb: (value) => set({ maxImageSizeMb: value }),
+  loadHistoryStats: async () => {
+    try {
+      set({ historyStats: await window.api.getHistoryStats() })
+    } catch (e) {
+      console.error('Failed to load history stats:', e)
+    }
+  },
   loadSettings: async () => {
     try {
       const retention = await window.api.getSetting('retention_days')
       const autoHide = await window.api.getSetting('auto_hide')
       const darkMode = await window.api.getSetting('dark_mode')
+      const hotkey = await window.api.getSetting('hotkey')
+      const maxHistoryItems = await window.api.getSetting('max_history_items')
+      const maxImageSizeMb = await window.api.getSetting('max_image_size_mb')
       set({
         retentionDays: retention || '3',
         autoHide: autoHide !== 'false',
-        darkMode: darkMode === 'true'
+        darkMode: darkMode === 'true',
+        hotkey: hotkey || 'Ctrl+Shift+V',
+        maxHistoryItems: maxHistoryItems || '500',
+        maxImageSizeMb: maxImageSizeMb || '10'
       })
+      await get().loadHistoryStats()
     } catch (e) {
       console.error('Failed to load settings:', e)
     }

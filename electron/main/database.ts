@@ -74,6 +74,17 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
     )
   `)
 
+  const historyColumns = new Set<string>()
+  const columnStmt = db.prepare('PRAGMA table_info(clipboard_history)')
+  while (columnStmt.step()) historyColumns.add(String(columnStmt.getAsObject().name))
+  columnStmt.free()
+  if (!historyColumns.has('favorite_folder')) db.run("ALTER TABLE clipboard_history ADD COLUMN favorite_folder TEXT NOT NULL DEFAULT ''")
+  if (!historyColumns.has('favorite_tags')) db.run("ALTER TABLE clipboard_history ADD COLUMN favorite_tags TEXT NOT NULL DEFAULT ''")
+  if (!historyColumns.has('favorite_sort_order')) {
+    db.run('ALTER TABLE clipboard_history ADD COLUMN favorite_sort_order INTEGER NOT NULL DEFAULT 0')
+    db.run('UPDATE clipboard_history SET favorite_sort_order = -id WHERE is_favorite = 1')
+  }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS stickers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,6 +108,8 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
     setSetting('auto_hide', 'true')
     setSetting('dark_mode', 'false')
   }
+  if (!getSetting('max_history_items')) setSetting('max_history_items', '500')
+  if (!getSetting('max_image_size_mb')) setSetting('max_image_size_mb', '10')
 
   saveDb()
   return db
@@ -131,15 +144,68 @@ export interface HistoryItem {
   is_pinned: number
   is_favorite: number
   created_at: string
+  favorite_folder: string
+  favorite_tags: string
+  favorite_sort_order: number
 }
 
-export function insertHistory(type: 'text' | 'image', content: string | null, imagePath: string | null): void {
-  if (!db) return
+export function insertHistory(type: 'text' | 'image', content: string | null, imagePath: string | null): boolean {
+  if (!db) return false
   db.run(
     'INSERT INTO clipboard_history (type, content, image_path) VALUES (?, ?, ?)',
     [type, content, imagePath]
   )
+  enforceHistoryLimit(parseInt(getSetting('max_history_items') || '500', 10))
   saveDb()
+  return true
+}
+
+function removeHistoryRows(ids: number[]): number {
+  if (ids.length === 0) return 0
+  const placeholders = ids.map(() => '?').join(',')
+  const stmt = db.prepare(`SELECT image_path FROM clipboard_history WHERE id IN (${placeholders})`)
+  stmt.bind(ids)
+  while (stmt.step()) {
+    const imagePath = stmt.getAsObject().image_path as string | null
+    if (imagePath && fs.existsSync(imagePath)) {
+      try { fs.unlinkSync(imagePath) } catch (error) { console.error('Failed to remove history image:', error) }
+    }
+  }
+  stmt.free()
+  db.run(`DELETE FROM clipboard_history WHERE id IN (${placeholders})`, ids)
+  return db.getRowsModified()
+}
+
+export function enforceHistoryLimit(limit: number): number {
+  if (!db || !Number.isFinite(limit) || limit < 1) return 0
+  const total = Number(db.exec('SELECT COUNT(*) AS count FROM clipboard_history')[0]?.values[0]?.[0] || 0)
+  const overflow = total - limit
+  if (overflow <= 0) return 0
+  const stmt = db.prepare('SELECT id FROM clipboard_history WHERE is_pinned = 0 AND is_favorite = 0 ORDER BY created_at ASC, id ASC LIMIT ?')
+  stmt.bind([overflow])
+  const ids: number[] = []
+  while (stmt.step()) ids.push(Number(stmt.getAsObject().id))
+  stmt.free()
+  const removed = removeHistoryRows(ids)
+  if (removed > 0) saveDb()
+  return removed
+}
+
+export interface HistoryStats {
+  itemCount: number
+  imageBytes: number
+}
+
+export function getHistoryStats(): HistoryStats {
+  const itemCount = Number(db.exec('SELECT COUNT(*) AS count FROM clipboard_history')[0]?.values[0]?.[0] || 0)
+  const stmt = db.prepare("SELECT image_path FROM clipboard_history WHERE image_path IS NOT NULL")
+  let imageBytes = 0
+  while (stmt.step()) {
+    const imagePath = stmt.getAsObject().image_path as string
+    try { if (imagePath && fs.existsSync(imagePath)) imageBytes += fs.statSync(imagePath).size } catch { /* skip unreadable file */ }
+  }
+  stmt.free()
+  return { itemCount, imageBytes }
 }
 
 export function getLastHistory(): HistoryItem | null {
@@ -156,7 +222,7 @@ export function getLastHistory(): HistoryItem | null {
   return null
 }
 
-export function getHistoryList(search: string = '', filter: 'all' | 'favorites' = 'all'): HistoryItem[] {
+export function getHistoryList(search: string = '', filter: 'all' | 'favorites' = 'all', folder: string = ''): HistoryItem[] {
   if (!db) return []
   try {
     let query = 'SELECT * FROM clipboard_history WHERE 1=1'
@@ -164,6 +230,10 @@ export function getHistoryList(search: string = '', filter: 'all' | 'favorites' 
 
     if (filter === 'favorites') {
       query += ' AND is_favorite = 1'
+      if (folder) {
+        query += ' AND favorite_folder = ?'
+        params.push(folder)
+      }
     }
 
     if (search) {
@@ -171,7 +241,9 @@ export function getHistoryList(search: string = '', filter: 'all' | 'favorites' 
       params.push('text', `%${search}%`)
     }
 
-    query += ' ORDER BY is_pinned DESC, created_at DESC'
+    query += filter === 'favorites'
+      ? ' ORDER BY is_pinned DESC, favorite_sort_order ASC, created_at DESC'
+      : ' ORDER BY is_pinned DESC, created_at DESC'
 
     const stmt = db.prepare(query)
     if (params.length > 0) {
@@ -197,8 +269,55 @@ export function togglePin(id: number): void {
 
 export function toggleFavorite(id: number): void {
   if (!db) return
-  db.run('UPDATE clipboard_history SET is_favorite = CASE WHEN is_favorite = 0 THEN 1 ELSE 0 END WHERE id = ?', [id])
+  const item = getHistoryById(id)
+  if (!item) return
+  if (item.is_favorite) {
+    db.run('UPDATE clipboard_history SET is_favorite = 0 WHERE id = ?', [id])
+  } else {
+    const minStmt = db.prepare('SELECT MIN(favorite_sort_order) AS min_order FROM clipboard_history WHERE is_favorite = 1')
+    minStmt.step()
+    const minOrder = Number(minStmt.getAsObject().min_order || 0)
+    minStmt.free()
+    db.run('UPDATE clipboard_history SET is_favorite = 1, favorite_sort_order = ? WHERE id = ?', [minOrder - 1, id])
+  }
   saveDb()
+}
+
+function getHistoryById(id: number): HistoryItem | null {
+  const stmt = db.prepare('SELECT * FROM clipboard_history WHERE id = ?')
+  stmt.bind([id])
+  const item = stmt.step() ? stmt.getAsObject() as unknown as HistoryItem : null
+  stmt.free()
+  return item
+}
+
+export function getFavoriteFolders(): string[] {
+  const stmt = db.prepare("SELECT DISTINCT favorite_folder FROM clipboard_history WHERE is_favorite = 1 AND favorite_folder <> '' ORDER BY favorite_folder COLLATE NOCASE")
+  const folders: string[] = []
+  while (stmt.step()) folders.push(String(stmt.getAsObject().favorite_folder))
+  stmt.free()
+  return folders
+}
+
+export function updateFavoriteMetadata(id: number, folder: string, tags: string): void {
+  db.run('UPDATE clipboard_history SET favorite_folder = ?, favorite_tags = ? WHERE id = ? AND is_favorite = 1', [folder.trim(), tags.trim(), id])
+  saveDb()
+}
+
+export function moveFavorite(id: number, direction: 'up' | 'down'): boolean {
+  const item = getHistoryById(id)
+  if (!item || !item.is_favorite) return false
+  const favorites = getHistoryList('', 'favorites').filter((favorite) => favorite.is_pinned === item.is_pinned)
+  const index = favorites.findIndex((item) => item.id === id)
+  const nextIndex = direction === 'up' ? index - 1 : index + 1
+  if (index < 0 || nextIndex < 0 || nextIndex >= favorites.length) return false
+
+  const current = favorites[index]
+  const adjacent = favorites[nextIndex]
+  db.run('UPDATE clipboard_history SET favorite_sort_order = ? WHERE id = ?', [adjacent.favorite_sort_order, current.id])
+  db.run('UPDATE clipboard_history SET favorite_sort_order = ? WHERE id = ?', [current.favorite_sort_order, adjacent.id])
+  saveDb()
+  return true
 }
 
 export function deleteHistory(id: number): void {

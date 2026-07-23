@@ -8,6 +8,7 @@ import { registerIpcHandlers } from './ipc-handlers'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
+let registeredHotkey: string | null = null
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -98,6 +99,10 @@ function createWindow() {
       mainWindow.hide()
     }
   })
+
+  mainWindow.on('show', () => {
+    mainWindow?.webContents.send('history:changed')
+  })
 }
 
 function createTray() {
@@ -171,21 +176,64 @@ function showWindow() {
   }
 }
 
-function registerGlobalShortcut() {
-  const hotkey = getSetting('hotkey') || 'Ctrl+Shift+V'
+function isSupportedHotkey(hotkey: string): boolean {
+  const parts = hotkey.split('+')
+  const key = parts.pop()
+  const modifiers = parts
+  const supportedKey = /^(?:[A-Z0-9]|F(?:[1-9]|1[0-9]|2[0-4])|Space|Tab|Up|Down|Left|Right|Escape|Enter|Backspace|Delete|Home|End|PageUp|PageDown|Insert)$/.test(key || '')
+  const supportedModifiers = modifiers.length > 0
+    && modifiers.every((modifier) => ['Ctrl', 'Alt', 'Shift', 'Super'].includes(modifier))
+    && new Set(modifiers).size === modifiers.length
+
+  return supportedKey && supportedModifiers
+}
+
+export function hideWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
+}
+
+export function updateGlobalShortcut(rawHotkey: string): { success: boolean; hotkey?: string; error?: string } {
+  const hotkey = rawHotkey.trim()
+  if (!isSupportedHotkey(hotkey)) {
+    return { success: false, error: '快捷键格式无效，请至少组合一个修饰键和一个按键。' }
+  }
+
+  const previousHotkey = registeredHotkey
+  if (previousHotkey) globalShortcut.unregister(previousHotkey)
+
   try {
-    globalShortcut.register(hotkey, () => {
-      showWindow()
-    })
+    const registered = globalShortcut.register(hotkey, showWindow)
+    if (!registered) {
+      if (previousHotkey) globalShortcut.register(previousHotkey, showWindow)
+      return { success: false, error: '该快捷键已被其他应用占用。' }
+    }
+
+    registeredHotkey = hotkey
+    return { success: true, hotkey }
   } catch (e) {
     console.error('Failed to register global shortcut:', e)
-    try {
-      globalShortcut.register('Ctrl+Shift+V', () => {
-        showWindow()
-      })
-    } catch (e2) {
-      console.error('Fallback shortcut also failed:', e2)
+    if (previousHotkey) {
+      try {
+        globalShortcut.register(previousHotkey, showWindow)
+      } catch (restoreError) {
+        console.error('Failed to restore previous global shortcut:', restoreError)
+      }
     }
+    return { success: false, error: '无法注册该快捷键。' }
+  }
+}
+
+function registerGlobalShortcut() {
+  const hotkey = getSetting('hotkey') || 'Ctrl+Shift+V'
+  const result = updateGlobalShortcut(hotkey)
+  if (result.success) return
+
+  console.error('Failed to register saved global shortcut:', result.error)
+  const fallback = updateGlobalShortcut('Ctrl+Shift+V')
+  if (fallback.success) {
+    setSetting('hotkey', 'Ctrl+Shift+V')
+  } else {
+    console.error('Fallback shortcut also failed:', fallback.error)
   }
 }
 
@@ -197,14 +245,16 @@ app.whenReady().then(async () => {
   await initDatabaseAsync()
 
   // Register IPC handlers
-  registerIpcHandlers()
+  registerIpcHandlers(updateGlobalShortcut, hideWindow)
 
   // Create UI
   createWindow()
   createTray()
 
   // Start services
-  startMonitor(500)
+  startMonitor(500, () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('history:changed')
+  })
   startScheduler()
 
   // Register global shortcut

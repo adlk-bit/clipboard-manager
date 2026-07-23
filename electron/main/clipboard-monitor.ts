@@ -1,7 +1,7 @@
 import { clipboard, nativeImage, app } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import { insertHistory } from './database'
+import { getSetting, insertHistory } from './database'
 
 let lastTextContent = ''
 let lastImageHash = ''
@@ -27,15 +27,15 @@ function hashImage(image: Electron.NativeImage): string {
   return `${len}-${first}-${last}`
 }
 
-function saveImageFile(image: Electron.NativeImage): string {
+function saveImageFile(png: Buffer): string {
   const timestamp = Date.now()
   const filename = `clip_${timestamp}.png`
   const filepath = path.join(getImagesDir(), filename)
-  fs.writeFileSync(filepath, image.toPNG())
+  fs.writeFileSync(filepath, png)
   return filepath
 }
 
-export function checkClipboard() {
+export function checkClipboard(onHistoryChanged?: () => void) {
   // Check for image first (clipboard may contain both text and image)
   const image = clipboard.readImage()
   if (!image.isEmpty()) {
@@ -43,8 +43,14 @@ export function checkClipboard() {
     if (imgHash !== lastImageHash) {
       lastImageHash = imgHash
       try {
-        const filepath = saveImageFile(image)
-        insertHistory('image', null, filepath)
+        const png = image.toPNG()
+        const maxBytes = parseInt(getSetting('max_image_size_mb') || '10', 10) * 1024 * 1024
+        if (png.length > maxBytes) {
+          console.warn(`Clipboard image skipped: ${png.length} bytes exceeds configured limit`)
+          return
+        }
+        const filepath = saveImageFile(png)
+        if (insertHistory('image', null, filepath)) onHistoryChanged?.()
       } catch (e) {
         console.error('Failed to save clipboard image:', e)
       }
@@ -60,16 +66,16 @@ export function checkClipboard() {
 
     if (trimmed !== lastTextContent) {
       lastTextContent = trimmed
-      insertHistory('text', trimmed, null)
+      if (insertHistory('text', trimmed, null)) onHistoryChanged?.()
     }
   }
 }
 
-export function startMonitor(intervalMs: number = 500) {
+export function startMonitor(intervalMs: number = 500, onHistoryChanged?: () => void) {
   // Reset state on start
   lastTextContent = ''
   lastImageHash = ''
-  monitorTimer = setInterval(checkClipboard, intervalMs)
+  monitorTimer = setInterval(() => checkClipboard(onHistoryChanged), intervalMs)
 }
 
 export function stopMonitor() {

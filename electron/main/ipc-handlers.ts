@@ -1,4 +1,4 @@
-import { ipcMain, dialog, clipboard, nativeImage } from 'electron'
+import { ipcMain, dialog, clipboard, nativeImage, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { app } from 'electron'
@@ -16,9 +16,21 @@ import {
   deleteSticker,
   exportHistory,
   importHistory,
+  getFavoriteFolders,
+  updateFavoriteMetadata,
+  moveFavorite,
+  enforceHistoryLimit,
+  getHistoryStats,
   HistoryItem,
   StickerItem
 } from './database'
+import { normalizeHttpUrl } from '../../shared/url'
+
+export interface HotkeyUpdateResult {
+  success: boolean
+  hotkey?: string
+  error?: string
+}
 
 let stickersDir: string | null = null
 
@@ -32,10 +44,10 @@ function getStickersDir(): string {
   return stickersDir
 }
 
-export function registerIpcHandlers() {
+export function registerIpcHandlers(updateHotkey: (hotkey: string) => HotkeyUpdateResult, hideMainWindow: () => void) {
   // ---- History ----
-  ipcMain.handle('history:list', (_event, search: string, filter: string) => {
-    return getHistoryList(search, filter as 'all' | 'favorites')
+  ipcMain.handle('history:list', (_event, search: string, filter: string, folder: string = '') => {
+    return getHistoryList(search, filter as 'all' | 'favorites', folder)
   })
 
   ipcMain.handle('history:togglePin', (_event, id: number) => {
@@ -84,6 +96,26 @@ export function registerIpcHandlers() {
     return { success: false, error: 'Invalid item' }
   })
 
+  ipcMain.handle('favorites:folders', () => getFavoriteFolders())
+  ipcMain.handle('favorites:updateMetadata', (_event, id: number, folder: string, tags: string) => updateFavoriteMetadata(id, folder, tags))
+  ipcMain.handle('favorites:move', (_event, id: number, direction: 'up' | 'down') => moveFavorite(id, direction))
+  ipcMain.handle('window:hide', () => hideMainWindow())
+
+  ipcMain.handle('url:openExternal', async (_event, rawUrl: unknown) => {
+    if (typeof rawUrl !== 'string') return { success: false, error: 'Invalid URL' }
+
+    const url = normalizeHttpUrl(rawUrl)
+    if (!url) return { success: false, error: 'Invalid URL' }
+
+    try {
+      await shell.openExternal(url)
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to open external URL:', error)
+      return { success: false, error: String(error) }
+    }
+  })
+
   // ---- Settings ----
   ipcMain.handle('settings:get', (_event, key: string) => {
     return getSetting(key)
@@ -91,6 +123,17 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('settings:set', (_event, key: string, value: string) => {
     setSetting(key, value)
+    if (key === 'max_history_items') enforceHistoryLimit(parseInt(value, 10))
+  })
+
+  ipcMain.handle('history:stats', () => getHistoryStats())
+
+  ipcMain.handle('settings:setHotkey', (_event, hotkey: unknown) => {
+    if (typeof hotkey !== 'string') return { success: false, error: '快捷键格式无效。' }
+
+    const result = updateHotkey(hotkey)
+    if (result.success && result.hotkey) setSetting('hotkey', result.hotkey)
+    return result
   })
 
   // ---- Stickers ----

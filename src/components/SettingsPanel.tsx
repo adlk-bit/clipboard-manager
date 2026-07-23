@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../stores/useStore'
 import ExportImport from './ExportImport'
 
@@ -6,11 +6,21 @@ export default function SettingsPanel() {
   const retentionDays = useStore((s) => s.retentionDays)
   const autoHide = useStore((s) => s.autoHide)
   const darkMode = useStore((s) => s.darkMode)
+  const hotkey = useStore((s) => s.hotkey)
+  const maxHistoryItems = useStore((s) => s.maxHistoryItems)
+  const maxImageSizeMb = useStore((s) => s.maxImageSizeMb)
+  const historyStats = useStore((s) => s.historyStats)
   const setRetentionDays = useStore((s) => s.setRetentionDays)
   const setAutoHide = useStore((s) => s.setAutoHide)
   const setDarkMode = useStore((s) => s.setDarkMode)
+  const setHotkey = useStore((s) => s.setHotkey)
+  const setMaxHistoryItems = useStore((s) => s.setMaxHistoryItems)
+  const setMaxImageSizeMb = useStore((s) => s.setMaxImageSizeMb)
   const saveSettings = useStore((s) => s.saveSettings)
   const loadSettings = useStore((s) => s.loadSettings)
+  const loadHistoryStats = useStore((s) => s.loadHistoryStats)
+  const [isRecordingHotkey, setIsRecordingHotkey] = useState(false)
+  const [hotkeyMessage, setHotkeyMessage] = useState('点击输入框后按下新的组合键，即时生效。')
 
   useEffect(() => {
     loadSettings()
@@ -31,12 +41,56 @@ export default function SettingsPanel() {
     saveSettings('dark_mode', on ? 'true' : 'false')
   }
 
+  const handleMaxHistoryItemsChange = async (value: string) => {
+    setMaxHistoryItems(value)
+    await saveSettings('max_history_items', value)
+    await loadHistoryStats()
+  }
+
+  const handleMaxImageSizeChange = async (value: string) => {
+    setMaxImageSizeMb(value)
+    await saveSettings('max_image_size_mb', value)
+  }
+
+  const handleHotkeyKeyDown = async (event: React.KeyboardEvent<HTMLInputElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (event.key === 'Escape') {
+      setIsRecordingHotkey(false)
+      setHotkeyMessage('已取消修改。')
+      return
+    }
+
+    const key = getAcceleratorKey(event)
+    const modifiers = [
+      event.ctrlKey && 'Ctrl',
+      event.altKey && 'Alt',
+      event.shiftKey && 'Shift',
+      event.metaKey && 'Super',
+    ].filter(Boolean) as string[]
+
+    if (!key || modifiers.length === 0) {
+      setHotkeyMessage('请至少按住 Ctrl、Alt、Shift 或 Win 之一，再按一个键。')
+      return
+    }
+
+    const nextHotkey = [...modifiers, key].join('+')
+    const result = await window.api.setHotkey(nextHotkey)
+    if (result.success && result.hotkey) {
+      setHotkey(result.hotkey)
+      setHotkeyMessage(`已启用 ${result.hotkey}。`)
+      setIsRecordingHotkey(false)
+    } else {
+      setHotkeyMessage(result.error || '无法注册该快捷键。')
+    }
+  }
+
   return (
-    <div className="p-4 space-y-5">
-      {/* Retention */}
+    <div className="p-5 space-y-5">
       <div>
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">存储期限</h3>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">超过期限的记录将自动清理（置顶和收藏的记录不受影响）</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">超过期限的记录将自动清理（置顶和收藏记录不受影响）</p>
         <div className="grid grid-cols-4 gap-2">
           {[
             { value: '1', label: '1 天' },
@@ -44,95 +98,92 @@ export default function SettingsPanel() {
             { value: '5', label: '5 天' },
             { value: '0', label: '永久' },
           ].map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => handleRetentionChange(opt.value)}
-              className={`no-drag py-2 px-3 rounded-lg text-xs font-medium transition-all ${
-                retentionDays === opt.value
-                  ? 'bg-primary-500 text-white shadow-sm'
-                  : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 hover:text-primary-600 dark:hover:text-primary-400'
-              }`}
-            >
+            <button key={opt.value} onClick={() => handleRetentionChange(opt.value)} className={`no-drag py-2 px-3 rounded-[10px] text-xs font-medium transition-[background-color,color,transform,box-shadow] duration-150 active:scale-[0.97] ${retentionDays === opt.value ? 'bg-[#007aff] text-white shadow-[0_3px_8px_rgba(0,122,255,0.22)]' : 'bg-white/85 dark:bg-[#2c2c2e] text-[#48484a] dark:text-[#d1d1d6] shadow-[0_1px_2px_rgba(60,60,67,0.08)] hover:bg-[#eaf4ff] dark:hover:bg-white/10 hover:text-[#007aff]'}`}>
               {opt.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Dark mode */}
-      <div>
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">外观</h3>
-        <label className="flex items-center justify-between py-3 px-4 rounded-xl bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors">
-          <div>
-            <p className="text-sm text-gray-700 dark:text-gray-200">深色模式</p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">切换为深色界面主题</p>
-          </div>
-          <button
-            onClick={() => handleDarkModeChange(!darkMode)}
-            className={`no-drag relative w-10 h-5 rounded-full transition-colors ${
-              darkMode ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'
-            }`}
-          >
-            <div
-              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                darkMode ? 'left-5' : 'left-0.5'
-              }`}
-            />
-          </button>
-        </label>
-      </div>
+      <SettingToggle sectionTitle="外观" title="深色模式" description="切换为深色界面主题" enabled={darkMode} onChange={handleDarkModeChange} />
+      <SettingToggle sectionTitle="窗口行为" title="失去焦点时自动隐藏" description="点击窗口外部时自动隐藏窗口到托盘" enabled={autoHide} onChange={handleAutoHideChange} />
 
-      {/* Auto hide */}
-      <div>
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">窗口行为</h3>
-        <label className="flex items-center justify-between py-3 px-4 rounded-xl bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors">
-          <div>
-            <p className="text-sm text-gray-700 dark:text-gray-200">失去焦点时自动隐藏</p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">点击窗口外部时自动隐藏窗口到托盘</p>
-          </div>
-          <button
-            onClick={() => handleAutoHideChange(!autoHide)}
-            className={`no-drag relative w-10 h-5 rounded-full transition-colors ${
-              autoHide ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'
-            }`}
-          >
-            <div
-              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                autoHide ? 'left-5' : 'left-0.5'
-              }`}
-            />
-          </button>
-        </label>
-      </div>
-
-      {/* Shortcut info */}
       <div>
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">快捷键</h3>
-        <div className="py-3 px-4 rounded-xl bg-gray-50 dark:bg-gray-800">
-          <div className="flex items-center gap-2">
-            <kbd className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-mono text-gray-600 dark:text-gray-300 shadow-sm">
-              Ctrl
-            </kbd>
-            <span className="text-gray-400 dark:text-gray-500">+</span>
-            <kbd className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-mono text-gray-600 dark:text-gray-300 shadow-sm">
-              Shift
-            </kbd>
-            <span className="text-gray-400 dark:text-gray-500">+</span>
-            <kbd className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-mono text-gray-600 dark:text-gray-300 shadow-sm">
-              V
-            </kbd>
-            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">唤起剪贴板窗口</span>
+        <div className="py-3 px-4 rounded-[14px] bg-white/80 dark:bg-[#2c2c2e] border border-white/80 dark:border-white/10 shadow-[0_1px_2px_rgba(60,60,67,0.08)]">
+          <input
+            value={isRecordingHotkey ? '请按下组合键…' : hotkey}
+            readOnly
+            onFocus={() => { setIsRecordingHotkey(true); setHotkeyMessage('正在录入，请按下新的组合键。') }}
+            onBlur={() => setIsRecordingHotkey(false)}
+            onKeyDown={handleHotkeyKeyDown}
+            className="no-drag w-full cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-mono text-gray-700 outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:focus:ring-primary-900/40"
+            aria-label="全局快捷键"
+          />
+          <p className="mt-2 text-[10px] text-gray-500 dark:text-gray-400">{hotkeyMessage}</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">历史容量</h3>
+        <div className="rounded-[14px] bg-white/80 p-3 dark:bg-[#2c2c2e] border border-white/80 dark:border-white/10 shadow-[0_1px_2px_rgba(60,60,67,0.08)]">
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">当前 {historyStats.itemCount} 条记录，图片占用 {formatBytes(historyStats.imageBytes)}。达到条目上限时，最旧的非置顶、非收藏记录会自动清理。</p>
+          <p className="mb-1.5 text-[10px] text-gray-400 dark:text-gray-500">最大条目数</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {['100', '300', '500', '1000'].map((value) => (
+              <button key={value} onClick={() => handleMaxHistoryItemsChange(value)} className={`no-drag rounded-md py-1.5 text-xs ${maxHistoryItems === value ? 'bg-primary-500 text-white' : 'bg-white text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>{value}</button>
+            ))}
+          </div>
+          <p className="mb-1.5 mt-3 text-[10px] text-gray-400 dark:text-gray-500">单张图片最大大小</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {['1', '5', '10', '20'].map((value) => (
+              <button key={value} onClick={() => handleMaxImageSizeChange(value)} className={`no-drag rounded-md py-1.5 text-xs ${maxImageSizeMb === value ? 'bg-primary-500 text-white' : 'bg-white text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>{value} MB</button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Export / Import */}
       <ExportImport />
 
-      {/* About */}
       <div className="pt-2 text-center">
         <p className="text-[10px] text-gray-300 dark:text-gray-600">剪贴板管理器 v1.0.1</p>
       </div>
     </div>
   )
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function SettingToggle({ sectionTitle, title, description, enabled, onChange }: { sectionTitle: string; title: string; description: string; enabled: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <div>
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{sectionTitle}</h3>
+      <label className="flex items-center justify-between py-3 px-4 rounded-[14px] bg-white/80 dark:bg-[#2c2c2e] border border-white/80 dark:border-white/10 shadow-[0_1px_2px_rgba(60,60,67,0.08)] cursor-pointer hover:bg-white dark:hover:bg-white/10 transition-colors">
+        <div>
+          <p className="text-sm text-gray-700 dark:text-gray-200">{title}</p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{description}</p>
+        </div>
+        <button onClick={() => onChange(!enabled)} className={`no-drag relative w-11 h-6 rounded-full transition-colors duration-200 ${enabled ? 'bg-[#34c759]' : 'bg-[#c7c7cc] dark:bg-[#636366]'}`}>
+          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform duration-200 ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
+      </label>
+    </div>
+  )
+}
+
+function getAcceleratorKey(event: React.KeyboardEvent<HTMLInputElement>): string | null {
+  if (new Set(['Control', 'Alt', 'Shift', 'Meta']).has(event.key)) return null
+  if (/^[a-zA-Z0-9]$/.test(event.key)) return event.key.toUpperCase()
+  if (/^F(?:[1-9]|1[0-9]|2[0-4])$/.test(event.key)) return event.key
+
+  const keyMap: Record<string, string> = {
+    ' ': 'Space', Tab: 'Tab', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+    Enter: 'Enter', Backspace: 'Backspace', Delete: 'Delete', Home: 'Home', End: 'End',
+    PageUp: 'PageUp', PageDown: 'PageDown', Insert: 'Insert',
+  }
+  return keyMap[event.key] || null
 }
