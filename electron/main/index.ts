@@ -57,9 +57,13 @@ function createWindow() {
     minWidth: 320,
     minHeight: 400,
     frame: false,
-    transparent: true,
+    // Resizable transparent frameless windows have unreliable native
+    // maximize/unmaximize behavior on Windows. The renderer already paints
+    // the entire surface, so an opaque host window keeps the same appearance.
+    transparent: false,
+    backgroundColor: '#f7f7f8',
     resizable: true,
-    skipTaskbar: true,
+    skipTaskbar: false,
     alwaysOnTop: false,
     show: false,
     webPreferences: {
@@ -79,17 +83,12 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
 
-  // Open DevTools in dev mode
-  if (process.env.ELECTRON_RENDERER_URL) {
-    mainWindow.webContents.openDevTools({ mode: 'detach' })
-  }
-
-  mainWindow.on('blur', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const autoHide = getSetting('auto_hide')
-      if (autoHide !== 'false') {
-        mainWindow.hide()
-      }
+  // Development sessions should be directly inspectable without relying on a
+  // global shortcut that may already be owned by an installed release.
+  mainWindow.once('ready-to-show', () => {
+    if (process.env.ELECTRON_RENDERER_URL && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show()
+      mainWindow.focus()
     }
   })
 
@@ -103,6 +102,14 @@ function createWindow() {
   mainWindow.on('show', () => {
     mainWindow?.webContents.send('history:changed')
   })
+
+  const notifyMaximizedState = () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window:maximized-changed', mainWindow.isMaximized())
+    }
+  }
+  mainWindow.on('maximize', notifyMaximizedState)
+  mainWindow.on('unmaximize', notifyMaximizedState)
 }
 
 function createTray() {
@@ -156,24 +163,36 @@ function createFallbackTrayIcon(): nativeImage {
 }
 
 function showWindow() {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    const cursorPoint = screen.getCursorScreenPoint()
-    const currentDisplay = screen.getDisplayNearestPoint(cursorPoint)
+  if (!mainWindow || mainWindow.isDestroyed()) return
 
-    if (mainWindow.isVisible()) {
-      mainWindow.focus()
-    } else {
-      const [winWidth, winHeight] = mainWindow.getSize()
-      const { x: displayX, y: displayY, width: displayWidth, height: displayHeight } = currentDisplay.workArea
-
-      const x = Math.round(displayX + (displayWidth - winWidth) / 2)
-      const y = Math.round(displayY + (displayHeight - winHeight) / 2)
-
-      mainWindow.setPosition(x, y)
-      mainWindow.show()
-      mainWindow.focus()
-    }
+  // A minimized BrowserWindow is reported as not visible. Restore it before
+  // reading or changing its bounds; moving a minimized/maximized frameless
+  // window can produce invalid native coordinates on Windows.
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+    return
   }
+
+  if (!mainWindow.isVisible()) {
+    // Keep the native maximized state intact when reopening from the tray.
+    if (!mainWindow.isMaximized()) {
+      const cursorPoint = screen.getCursorScreenPoint()
+      const { workArea } = screen.getDisplayNearestPoint(cursorPoint)
+      const [winWidth, winHeight] = mainWindow.getSize()
+      const x = Math.round(workArea.x + (workArea.width - winWidth) / 2)
+      const y = Math.round(workArea.y + (workArea.height - winHeight) / 2)
+
+      if (Number.isSafeInteger(x) && Number.isSafeInteger(y)) {
+        mainWindow.setPosition(x, y)
+      }
+    }
+
+    mainWindow.show()
+  }
+
+  mainWindow.focus()
 }
 
 function isSupportedHotkey(hotkey: string): boolean {

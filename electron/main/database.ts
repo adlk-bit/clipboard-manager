@@ -70,6 +70,9 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
       image_path TEXT,
       is_pinned INTEGER DEFAULT 0,
       is_favorite INTEGER DEFAULT 0,
+      use_count INTEGER NOT NULL DEFAULT 1,
+      last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      content_hash TEXT NOT NULL DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
@@ -84,6 +87,12 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
     db.run('ALTER TABLE clipboard_history ADD COLUMN favorite_sort_order INTEGER NOT NULL DEFAULT 0')
     db.run('UPDATE clipboard_history SET favorite_sort_order = -id WHERE is_favorite = 1')
   }
+  if (!historyColumns.has('use_count')) db.run('ALTER TABLE clipboard_history ADD COLUMN use_count INTEGER NOT NULL DEFAULT 1')
+  if (!historyColumns.has('last_used_at')) {
+    db.run("ALTER TABLE clipboard_history ADD COLUMN last_used_at TEXT NOT NULL DEFAULT ''")
+    db.run("UPDATE clipboard_history SET last_used_at = created_at WHERE last_used_at = ''")
+  }
+  if (!historyColumns.has('content_hash')) db.run("ALTER TABLE clipboard_history ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''")
 
   db.run(`
     CREATE TABLE IF NOT EXISTS stickers (
@@ -105,7 +114,6 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
   if (!existingRetention) {
     setSetting('retention_days', '3')
     setSetting('hotkey', 'Ctrl+Shift+V')
-    setSetting('auto_hide', 'true')
     setSetting('dark_mode', 'false')
   }
   if (!getSetting('max_history_items')) setSetting('max_history_items', '500')
@@ -147,17 +155,54 @@ export interface HistoryItem {
   favorite_folder: string
   favorite_tags: string
   favorite_sort_order: number
+  use_count: number
+  last_used_at: string
+  content_hash: string
 }
 
-export function insertHistory(type: 'text' | 'image', content: string | null, imagePath: string | null): boolean {
-  if (!db) return false
+export interface HistoryInsertResult {
+  created: boolean
+  id: number | null
+}
+
+export function insertHistory(
+  type: 'text' | 'image',
+  content: string | null,
+  imagePath: string | null,
+  contentHash: string = ''
+): HistoryInsertResult {
+  if (!db) return { created: false, id: null }
+
+  const duplicateQuery = type === 'text'
+    ? 'SELECT id FROM clipboard_history WHERE type = ? AND content = ? ORDER BY last_used_at DESC, id DESC LIMIT 1'
+    : 'SELECT id FROM clipboard_history WHERE type = ? AND content_hash = ? AND content_hash <> \'\' ORDER BY last_used_at DESC, id DESC LIMIT 1'
+  const duplicateParams = type === 'text' ? [type, content] : [type, contentHash]
+  const duplicateStmt = db.prepare(duplicateQuery)
+  duplicateStmt.bind(duplicateParams)
+  if (duplicateStmt.step()) {
+    const duplicateId = Number(duplicateStmt.getAsObject().id)
+    duplicateStmt.free()
+    db.run('UPDATE clipboard_history SET use_count = use_count + 1, last_used_at = CURRENT_TIMESTAMP WHERE id = ?', [duplicateId])
+    saveDb()
+    return { created: false, id: duplicateId }
+  }
+  duplicateStmt.free()
+
   db.run(
-    'INSERT INTO clipboard_history (type, content, image_path) VALUES (?, ?, ?)',
-    [type, content, imagePath]
+    'INSERT INTO clipboard_history (type, content, image_path, content_hash) VALUES (?, ?, ?, ?)',
+    [type, content, imagePath, contentHash]
   )
   enforceHistoryLimit(parseInt(getSetting('max_history_items') || '500', 10))
   saveDb()
-  return true
+  return { created: true, id: Number(db.exec('SELECT last_insert_rowid() AS id')[0]?.values[0]?.[0] || 0) || null }
+}
+
+export function recordHistoryUse(id: number): boolean {
+  if (!db || !Number.isInteger(id) || id < 1) return false
+  db.run('UPDATE clipboard_history SET use_count = use_count + 1, last_used_at = CURRENT_TIMESTAMP WHERE id = ?', [id])
+  const updated = db.getRowsModified() > 0
+  if (updated) saveDb()
+  return updated
 }
 
 function removeHistoryRows(ids: number[]): number {
@@ -222,7 +267,12 @@ export function getLastHistory(): HistoryItem | null {
   return null
 }
 
-export function getHistoryList(search: string = '', filter: 'all' | 'favorites' = 'all', folder: string = ''): HistoryItem[] {
+export function getHistoryList(
+  search: string = '',
+  filter: 'all' | 'favorites' = 'all',
+  folder: string = '',
+  sort: 'recent' | 'frequent' = 'recent'
+): HistoryItem[] {
   if (!db) return []
   try {
     let query = 'SELECT * FROM clipboard_history WHERE 1=1'
@@ -241,9 +291,13 @@ export function getHistoryList(search: string = '', filter: 'all' | 'favorites' 
       params.push('text', `%${search}%`)
     }
 
-    query += filter === 'favorites'
-      ? ' ORDER BY is_pinned DESC, favorite_sort_order ASC, created_at DESC'
-      : ' ORDER BY is_pinned DESC, created_at DESC'
+    if (filter === 'favorites') {
+      query += ' ORDER BY is_pinned DESC, favorite_sort_order ASC, created_at DESC'
+    } else if (sort === 'frequent') {
+      query += ' ORDER BY is_pinned DESC, use_count DESC, last_used_at DESC, created_at DESC'
+    } else {
+      query += ' ORDER BY is_pinned DESC, created_at DESC'
+    }
 
     const stmt = db.prepare(query)
     if (params.length > 0) {

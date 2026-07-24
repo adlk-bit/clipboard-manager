@@ -11,17 +11,19 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 | Module | Description |
 |------|------|
 | 🔄 **Live Auto-Capture** | New clipboard entries appear in the open window immediately; text and images are saved in the background |
+| ♻️ **Smart Deduplication** | Identical text and images merge into one entry with a usage count and last-used time, keeping history compact |
+| 🔥 **Frequently Used View** | Switch between newest and most-used entries to reach recurring content faster |
 | 📌 **Organized Favorites** | Pin or favorite important entries, then add folders/tags and reorder favorites |
 | 🔍 **Live Search** | Fuzzy-match text content as you type, lightning fast |
 | 🔗 **Quick-Open URLs** | URL-only clipboard items can be opened safely in the default browser |
 | 🖼️ **Sticker Library** | Import local images as stickers, click to copy to clipboard |
-| ☑️ **Batch Mode** | Long-press any card to enter multi-select; delete or manage in bulk |
+| ☑️ **Batch Mode** | Select multiple entries for bulk deletion |
 | 🗑️ **Auto-Cleanup** | Choose 1 / 3 / 5 days or forever; expired entries clean themselves |
 | 🌙 **Refined Dark Mode** | A unified system-style light/dark interface with reduced-motion and reduced-transparency support |
 | 📤 **Backup & Restore** | Export/import history as JSON for data migration |
 | ⌨️ **Configurable Hotkey** | Record a new global shortcut directly in Settings; `Ctrl+Shift+V` is the default |
 | 📊 **Storage Controls** | Set history capacity and maximum clipboard-image size, then inspect current usage |
-| 🎨 **Frameless Design** | Rounded translucent window, auto-centers on active monitor |
+| 🪟 **Native Window Controls** | Frameless system-style header with minimize, maximize/restore, and tray-safe close controls |
 
 ---
 
@@ -52,14 +54,13 @@ npm run dist
 
 ---
 
-## 🆕 What's New in v1.0.2
+## 🆕 What's New in v1.0.3
 
-- Live history refresh while the app window is open, plus keyboard navigation with ↑ / ↓ and Enter to copy.
-- Favorites can now be grouped with folders and tags, ordered manually, and filtered by folder.
-- URL-only history items offer a safe open-in-browser action; non-HTTP(S) links are rejected.
-- Added history-capacity and image-size limits, storage usage statistics, and automatic cleanup of eligible old records.
-- You can record a custom global shortcut in Settings.
-- Refined the visual system with a consistent dark theme, improved materials, typography, feedback, and accessibility preferences.
+- Identical clipboard text now merges into one record instead of creating duplicates; each entry tracks usage count and last-used time.
+- Image deduplication uses a SHA-256 content fingerprint, avoiding duplicate history items and unnecessary image files.
+- Added a **Frequently Used** history view, ranked by pin status, usage count, and recency; the original newest-first view remains available.
+- Added system-style window controls for minimize, maximize/restore, and close-to-tray, with more reliable behavior for resizable Windows windows.
+- Improved reopening behavior from the tray and development startup visibility.
 
 ---
 
@@ -70,6 +71,7 @@ npm run dist
 | Open window | `Ctrl+Shift+V` or double-click tray icon |
 | Browse history | Sidebar → "All Records" |
 | Copy an item | Click 📋 on any card, or use ↑ / ↓ then Enter |
+| Change history order | In All Records, choose “Newest” or “Frequently Used” |
 | Pin | Hover card → click 📌 |
 | Favorite | Hover card → click ⭐ |
 | Organize favorites | In Favorites, use the card actions to edit folders/tags or reorder |

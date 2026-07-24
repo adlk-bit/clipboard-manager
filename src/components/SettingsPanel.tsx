@@ -4,14 +4,12 @@ import ExportImport from './ExportImport'
 
 export default function SettingsPanel() {
   const retentionDays = useStore((s) => s.retentionDays)
-  const autoHide = useStore((s) => s.autoHide)
   const darkMode = useStore((s) => s.darkMode)
   const hotkey = useStore((s) => s.hotkey)
   const maxHistoryItems = useStore((s) => s.maxHistoryItems)
   const maxImageSizeMb = useStore((s) => s.maxImageSizeMb)
   const historyStats = useStore((s) => s.historyStats)
   const setRetentionDays = useStore((s) => s.setRetentionDays)
-  const setAutoHide = useStore((s) => s.setAutoHide)
   const setDarkMode = useStore((s) => s.setDarkMode)
   const setHotkey = useStore((s) => s.setHotkey)
   const setMaxHistoryItems = useStore((s) => s.setMaxHistoryItems)
@@ -29,11 +27,6 @@ export default function SettingsPanel() {
   const handleRetentionChange = (days: string) => {
     setRetentionDays(days)
     saveSettings('retention_days', days)
-  }
-
-  const handleAutoHideChange = (hide: boolean) => {
-    setAutoHide(hide)
-    saveSettings('auto_hide', hide ? 'true' : 'false')
   }
 
   const handleDarkModeChange = (on: boolean) => {
@@ -106,7 +99,6 @@ export default function SettingsPanel() {
       </div>
 
       <SettingToggle sectionTitle="外观" title="深色模式" description="切换为深色界面主题" enabled={darkMode} onChange={handleDarkModeChange} />
-      <SettingToggle sectionTitle="窗口行为" title="失去焦点时自动隐藏" description="点击窗口外部时自动隐藏窗口到托盘" enabled={autoHide} onChange={handleAutoHideChange} />
 
       <div>
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">快捷键</h3>

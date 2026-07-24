@@ -1,13 +1,13 @@
 import { clipboard, nativeImage, app } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { createHash } from 'crypto'
 import { getSetting, insertHistory } from './database'
 
 let lastTextContent = ''
 let lastImageHash = ''
 let monitorTimer: NodeJS.Timeout | null = null
 let imagesDir: string | null = null
-let lastInsertedId: number | null = null
 
 function getImagesDir(): string {
   if (!imagesDir) {
@@ -20,11 +20,7 @@ function getImagesDir(): string {
 }
 
 function hashImage(image: Electron.NativeImage): string {
-  const png = image.toPNG()
-  const len = png.length
-  const first = png.slice(0, 16).toString('hex')
-  const last = png.slice(-16).toString('hex')
-  return `${len}-${first}-${last}`
+  return createHash('sha256').update(image.toPNG()).digest('hex')
 }
 
 function saveImageFile(png: Buffer): string {
@@ -50,7 +46,11 @@ export function checkClipboard(onHistoryChanged?: () => void) {
           return
         }
         const filepath = saveImageFile(png)
-        if (insertHistory('image', null, filepath)) onHistoryChanged?.()
+        const result = insertHistory('image', null, filepath, imgHash)
+        if (!result.created) {
+          try { fs.unlinkSync(filepath) } catch (error) { console.error('Failed to remove duplicate clipboard image:', error) }
+        }
+        if (result.id) onHistoryChanged?.()
       } catch (e) {
         console.error('Failed to save clipboard image:', e)
       }
@@ -66,7 +66,7 @@ export function checkClipboard(onHistoryChanged?: () => void) {
 
     if (trimmed !== lastTextContent) {
       lastTextContent = trimmed
-      if (insertHistory('text', trimmed, null)) onHistoryChanged?.()
+      if (insertHistory('text', trimmed, null).id) onHistoryChanged?.()
     }
   }
 }
@@ -82,5 +82,13 @@ export function stopMonitor() {
   if (monitorTimer) {
     clearInterval(monitorTimer)
     monitorTimer = null
+  }
+}
+
+export function markClipboardHistoryItemCopied(item: { type: 'text' | 'image'; content: string | null; image?: Electron.NativeImage }) {
+  if (item.type === 'text' && item.content) {
+    lastTextContent = item.content
+  } else if (item.type === 'image' && item.image) {
+    lastImageHash = hashImage(item.image)
   }
 }

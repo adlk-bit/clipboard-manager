@@ -1,6 +1,6 @@
 {
   "name": "clipboard-manager",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Windows 剪贴板历史管理工具",
   "main": "./out/main/index.js",
   "scripts": {

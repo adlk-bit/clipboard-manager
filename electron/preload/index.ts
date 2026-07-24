@@ -2,8 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 const api = {
   // History
-  getHistory: (search: string = '', filter: string = 'all', folder: string = '') =>
-    ipcRenderer.invoke('history:list', search, filter, folder),
+  getHistory: (search: string = '', filter: string = 'all', folder: string = '', sort: 'recent' | 'frequent' = 'recent') =>
+    ipcRenderer.invoke('history:list', search, filter, folder, sort),
   togglePin: (id: number) => ipcRenderer.invoke('history:togglePin', id),
   toggleFavorite: (id: number) => ipcRenderer.invoke('history:toggleFavorite', id),
   deleteHistory: (id: number) => ipcRenderer.invoke('history:delete', id),
@@ -14,6 +14,15 @@ const api = {
   updateFavoriteMetadata: (id: number, folder: string, tags: string) => ipcRenderer.invoke('favorites:updateMetadata', id, folder, tags),
   moveFavorite: (id: number, direction: 'up' | 'down') => ipcRenderer.invoke('favorites:move', id, direction),
   hideWindow: () => ipcRenderer.invoke('window:hide'),
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  toggleMaximizeWindow: (isMaximized: boolean) => ipcRenderer.invoke('window:toggleMaximize', isMaximized),
+  isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  onWindowMaximizedChanged: (callback: (isMaximized: boolean) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, isMaximized: boolean) => callback(isMaximized)
+    ipcRenderer.on('window:maximized-changed', listener)
+    return () => ipcRenderer.removeListener('window:maximized-changed', listener)
+  },
   getHistoryStats: () => ipcRenderer.invoke('history:stats'),
   onHistoryChanged: (callback: () => void) => {
     const listener = () => callback()

@@ -19,6 +19,8 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
   const favoriteFolder = useStore((s) => s.favoriteFolder)
   const favoriteFolders = useStore((s) => s.favoriteFolders)
   const setFavoriteFolder = useStore((s) => s.setFavoriteFolder)
+  const historySort = useStore((s) => s.historySort)
+  const setHistorySort = useStore((s) => s.setHistorySort)
 
   const allSelected = historyItems.length > 0 && selectedIds.size === historyItems.length
   const pinnedFavorites = currentPage === 'favorites' ? historyItems.filter((item) => item.is_pinned) : []
@@ -103,8 +105,25 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
         </div>
       )}
 
+      {currentPage === 'all' && !selectionMode && (
+        <div className="no-drag flex items-center gap-1 px-3.5 pt-3.5">
+          <button
+            onClick={() => setHistorySort('recent')}
+            className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${historySort === 'recent' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+          >
+            最新
+          </button>
+          <button
+            onClick={() => setHistorySort('frequent')}
+            className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${historySort === 'frequent' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+          >
+            常用
+          </button>
+        </div>
+      )}
+
       {/* Card list */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+      <div className={`flex-1 overflow-y-auto space-y-2.5 ${currentPage === 'all' && !selectionMode ? 'px-3.5 pb-3.5 pt-2.5' : 'p-3.5'}`}>
         {currentPage === 'favorites' && !selectionMode && (
           <div className="no-drag flex gap-1.5 overflow-x-auto pb-1.5">
             <button onClick={() => setFavoriteFolder('')} className={`shrink-0 rounded-full px-2 py-1 text-[10px] ${favoriteFolder === '' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>全部</button>

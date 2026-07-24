@@ -1,4 +1,4 @@
-import { ipcMain, dialog, clipboard, nativeImage, shell } from 'electron'
+import { BrowserWindow, ipcMain, dialog, clipboard, nativeImage, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { app } from 'electron'
@@ -21,10 +21,12 @@ import {
   moveFavorite,
   enforceHistoryLimit,
   getHistoryStats,
+  recordHistoryUse,
   HistoryItem,
   StickerItem
 } from './database'
 import { normalizeHttpUrl } from '../../shared/url'
+import { markClipboardHistoryItemCopied } from './clipboard-monitor'
 
 export interface HotkeyUpdateResult {
   success: boolean
@@ -46,8 +48,8 @@ function getStickersDir(): string {
 
 export function registerIpcHandlers(updateHotkey: (hotkey: string) => HotkeyUpdateResult, hideMainWindow: () => void) {
   // ---- History ----
-  ipcMain.handle('history:list', (_event, search: string, filter: string, folder: string = '') => {
-    return getHistoryList(search, filter as 'all' | 'favorites', folder)
+  ipcMain.handle('history:list', (_event, search: string, filter: string, folder: string = '', sort: string = 'recent') => {
+    return getHistoryList(search, filter as 'all' | 'favorites', folder, sort === 'frequent' ? 'frequent' : 'recent')
   })
 
   ipcMain.handle('history:togglePin', (_event, id: number) => {
@@ -70,12 +72,15 @@ export function registerIpcHandlers(updateHotkey: (hotkey: string) => HotkeyUpda
     return batchDeleteHistory(ids)
   })
 
-  ipcMain.handle('history:copyToClipboard', (_event, item: HistoryItem) => {
+  ipcMain.handle('history:copyToClipboard', (event, item: HistoryItem) => {
     if (item.type === 'text' && item.content) {
       clipboard.writeText(item.content)
       // Verify write
       const written = clipboard.readText()
       if (written === item.content) {
+        recordHistoryUse(item.id)
+        markClipboardHistoryItemCopied({ type: 'text', content: item.content })
+        event.sender.send('history:changed')
         return { success: true, type: 'text' }
       }
       return { success: false, type: 'text', error: 'Write verification failed' }
@@ -85,6 +90,9 @@ export function registerIpcHandlers(updateHotkey: (hotkey: string) => HotkeyUpda
           const img = nativeImage.createFromPath(item.image_path)
           if (!img.isEmpty()) {
             clipboard.writeImage(img)
+            recordHistoryUse(item.id)
+            markClipboardHistoryItemCopied({ type: 'image', content: null, image: img })
+            event.sender.send('history:changed')
             return { success: true, type: 'image' }
           }
         } catch (e) {
@@ -100,6 +108,32 @@ export function registerIpcHandlers(updateHotkey: (hotkey: string) => HotkeyUpda
   ipcMain.handle('favorites:updateMetadata', (_event, id: number, folder: string, tags: string) => updateFavoriteMetadata(id, folder, tags))
   ipcMain.handle('favorites:move', (_event, id: number, direction: 'up' | 'down') => moveFavorite(id, direction))
   ipcMain.handle('window:hide', () => hideMainWindow())
+  ipcMain.handle('window:minimize', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize()
+  })
+  ipcMain.handle('window:toggleMaximize', (event, rendererReportsMaximized: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return false
+
+    // The renderer receives maximize/unmaximize events from the main process.
+    // Use that event-backed state as a second signal because isMaximized() can
+    // briefly lag for a frameless window during a Windows transition.
+    const shouldRestore = window.isMaximized() || rendererReportsMaximized === true
+    if (shouldRestore) {
+      window.unmaximize()
+    } else {
+      window.maximize()
+    }
+
+    return !shouldRestore
+  })
+  ipcMain.handle('window:isMaximized', (event) => {
+    return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+  })
+  ipcMain.handle('window:close', (event) => {
+    // Closing the window keeps this tray application's clipboard monitor active.
+    BrowserWindow.fromWebContents(event.sender)?.hide()
+  })
 
   ipcMain.handle('url:openExternal', async (_event, rawUrl: unknown) => {
     if (typeof rawUrl !== 'string') return { success: false, error: 'Invalid URL' }

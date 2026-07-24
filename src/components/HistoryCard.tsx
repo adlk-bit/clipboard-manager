@@ -173,6 +173,12 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
               ))}
             </div>
           )}
+
+          {currentPage === 'all' && item.use_count > 1 && (
+            <div className="mt-2 text-[10px] text-gray-400 dark:text-gray-500">
+              已使用 {item.use_count} 次
+            </div>
+          )}
         </div>
 
         {currentPage === 'favorites' && editingFavorite && !selectionMode && (

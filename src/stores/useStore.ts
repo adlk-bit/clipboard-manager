@@ -9,6 +9,8 @@ interface AppState {
   // History
   historyItems: HistoryItem[]
   setHistoryItems: (items: HistoryItem[]) => void
+  historySort: 'recent' | 'frequent'
+  setHistorySort: (sort: 'recent' | 'frequent') => void
   loadHistory: (search?: string, filter?: string) => Promise<void>
   keyboardActiveId: number | null
   setKeyboardActiveId: (id: number | null) => void
@@ -29,14 +31,12 @@ interface AppState {
 
   // Settings
   retentionDays: string
-  autoHide: boolean
   darkMode: boolean
   hotkey: string
   maxHistoryItems: string
   maxImageSizeMb: string
   historyStats: HistoryStats
   setRetentionDays: (days: string) => void
-  setAutoHide: (hide: boolean) => void
   setDarkMode: (on: boolean) => void
   setHotkey: (hotkey: string) => void
   setMaxHistoryItems: (value: string) => void
@@ -82,6 +82,11 @@ export const useStore = create<AppState>((set, get) => ({
   // History
   historyItems: [],
   setHistoryItems: (items) => set({ historyItems: items }),
+  historySort: 'recent',
+  setHistorySort: (sort) => {
+    set({ historySort: sort })
+    get().loadHistory(get().searchQuery, 'all')
+  },
   keyboardActiveId: null,
   setKeyboardActiveId: (id) => set({ keyboardActiveId: id }),
   favoriteFolder: '',
@@ -101,7 +106,8 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const activeFilter = filter || 'all'
       const folder = activeFilter === 'favorites' ? get().favoriteFolder : ''
-      const items = await window.api.getHistory(search || '', activeFilter, folder)
+      const sort = activeFilter === 'all' ? get().historySort : 'recent'
+      const items = await window.api.getHistory(search || '', activeFilter, folder, sort)
       set({ historyItems: items })
     } catch (e) {
       console.error('Failed to load history:', e)
@@ -138,14 +144,12 @@ export const useStore = create<AppState>((set, get) => ({
 
   // Settings
   retentionDays: '3',
-  autoHide: true,
   darkMode: false,
   hotkey: 'Ctrl+Shift+V',
   maxHistoryItems: '500',
   maxImageSizeMb: '10',
   historyStats: { itemCount: 0, imageBytes: 0 },
   setRetentionDays: (days) => set({ retentionDays: days }),
-  setAutoHide: (hide) => set({ autoHide: hide }),
   setDarkMode: (on) => set({ darkMode: on }),
   setHotkey: (hotkey) => set({ hotkey }),
   setMaxHistoryItems: (value) => set({ maxHistoryItems: value }),
@@ -160,14 +164,12 @@ export const useStore = create<AppState>((set, get) => ({
   loadSettings: async () => {
     try {
       const retention = await window.api.getSetting('retention_days')
-      const autoHide = await window.api.getSetting('auto_hide')
       const darkMode = await window.api.getSetting('dark_mode')
       const hotkey = await window.api.getSetting('hotkey')
       const maxHistoryItems = await window.api.getSetting('max_history_items')
       const maxImageSizeMb = await window.api.getSetting('max_image_size_mb')
       set({
         retentionDays: retention || '3',
-        autoHide: autoHide !== 'false',
         darkMode: darkMode === 'true',
         hotkey: hotkey || 'Ctrl+Shift+V',
         maxHistoryItems: maxHistoryItems || '500',

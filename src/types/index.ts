@@ -9,6 +9,9 @@ export interface HistoryItem {
   favorite_folder: string
   favorite_tags: string
   favorite_sort_order: number
+  use_count: number
+  last_used_at: string
+  content_hash: string
 }
 
 export interface StickerItem {
@@ -26,7 +29,7 @@ export interface HistoryStats {
 export type PageView = 'all' | 'favorites' | 'stickers' | 'settings'
 
 export interface ElectronApi {
-  getHistory: (search?: string, filter?: string, folder?: string) => Promise<HistoryItem[]>
+  getHistory: (search?: string, filter?: string, folder?: string, sort?: 'recent' | 'frequent') => Promise<HistoryItem[]>
   togglePin: (id: number) => Promise<void>
   toggleFavorite: (id: number) => Promise<void>
   deleteHistory: (id: number) => Promise<void>
@@ -37,6 +40,11 @@ export interface ElectronApi {
   updateFavoriteMetadata: (id: number, folder: string, tags: string) => Promise<void>
   moveFavorite: (id: number, direction: 'up' | 'down') => Promise<boolean>
   hideWindow: () => Promise<void>
+  minimizeWindow: () => Promise<void>
+  toggleMaximizeWindow: (isMaximized: boolean) => Promise<boolean>
+  isWindowMaximized: () => Promise<boolean>
+  closeWindow: () => Promise<void>
+  onWindowMaximizedChanged: (callback: (isMaximized: boolean) => void) => () => void
   getHistoryStats: () => Promise<HistoryStats>
   onHistoryChanged: (callback: () => void) => () => void
   openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>
