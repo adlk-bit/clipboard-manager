@@ -19,8 +19,8 @@ function getImagesDir(): string {
   return imagesDir
 }
 
-function hashImage(image: Electron.NativeImage): string {
-  return createHash('sha256').update(image.toPNG()).digest('hex')
+function hashPng(png: Buffer): string {
+  return createHash('sha256').update(png).digest('hex')
 }
 
 function saveImageFile(png: Buffer): string {
@@ -35,11 +35,14 @@ export function checkClipboard(onHistoryChanged?: () => void) {
   // Check for image first (clipboard may contain both text and image)
   const image = clipboard.readImage()
   if (!image.isEmpty()) {
-    const imgHash = hashImage(image)
+    // Encoding a large clipboard image is expensive and temporarily allocates
+    // a large buffer. Reuse the PNG bytes for hashing and file persistence
+    // instead of encoding the same NativeImage twice.
+    const png = image.toPNG()
+    const imgHash = hashPng(png)
     if (imgHash !== lastImageHash) {
       lastImageHash = imgHash
       try {
-        const png = image.toPNG()
         const maxBytes = parseInt(getSetting('max_image_size_mb') || '10', 10) * 1024 * 1024
         if (png.length > maxBytes) {
           console.warn(`Clipboard image skipped: ${png.length} bytes exceeds configured limit`)
@@ -89,6 +92,6 @@ export function markClipboardHistoryItemCopied(item: { type: 'text' | 'image'; c
   if (item.type === 'text' && item.content) {
     lastTextContent = item.content
   } else if (item.type === 'image' && item.image) {
-    lastImageHash = hashImage(item.image)
+    lastImageHash = hashPng(item.image.toPNG())
   }
 }

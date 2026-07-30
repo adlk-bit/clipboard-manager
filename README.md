@@ -54,13 +54,12 @@ npm run dist
 
 ---
 
-## 🆕 What's New in v1.0.3
+## 🆕 What's New in v1.0.4
 
-- Identical clipboard text now merges into one record instead of creating duplicates; each entry tracks usage count and last-used time.
-- Image deduplication uses a SHA-256 content fingerprint, avoiding duplicate history items and unnecessary image files.
-- Added a **Frequently Used** history view, ranked by pin status, usage count, and recency; the original newest-first view remains available.
-- Added system-style window controls for minimize, maximize/restore, and close-to-tray, with more reliable behavior for resizable Windows windows.
-- Improved reopening behavior from the tray and development startup visibility.
+- Reduced the Windows installer from 99.35 MB to 87.66 MB by packaging only the sql.js runtime entry point and the English/Chinese Electron locales.
+- Avoided unnecessary sql.js debug, browser, worker, and unused renderer dependency files in the application archive.
+- Clipboard images are now encoded once per capture and the bytes are reused for hashing and persistence, reducing memory spikes for large images.
+- History-image thumbnails now use lazy, asynchronous decoding to keep long history lists responsive and lighter in memory.
 
 ---
 

@@ -155,6 +155,8 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
                   alt=""
                   className="w-full h-full object-cover"
                   draggable={false}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
               <div>

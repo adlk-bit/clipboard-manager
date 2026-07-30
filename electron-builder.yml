@@ -6,6 +6,16 @@ directories:
 files:
   - out
   - resources
+  # The renderer is bundled by Vite. The main process only loads sql.js' Node
+  # entry point, so omit the unused production packages and sql.js debug/browser
+  # builds that would otherwise inflate app.asar.
+  - "!node_modules/**"
+  - node_modules/sql.js/package.json
+  - node_modules/sql.js/dist/sql-wasm.js
+  - "!out/*.tsbuildinfo"
+electronLanguages:
+  - en-US
+  - zh-CN
 win:
   target:
     - nsis
