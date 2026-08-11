@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../stores/useStore'
 import ExportImport from './ExportImport'
+import { buildHotkey } from '../lib/hotkey'
 
 export default function SettingsPanel() {
   const retentionDays = useStore((s) => s.retentionDays)
@@ -18,10 +19,12 @@ export default function SettingsPanel() {
   const loadSettings = useStore((s) => s.loadSettings)
   const loadHistoryStats = useStore((s) => s.loadHistoryStats)
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false)
-  const [hotkeyMessage, setHotkeyMessage] = useState('点击输入框后按下新的组合键，即时生效。')
+  const [hotkeyMessage, setHotkeyMessage] = useState('点击快捷键按钮后按下新的组合键，即时生效。')
+  const [appVersion, setAppVersion] = useState('')
 
   useEffect(() => {
     loadSettings()
+    window.api.getAppVersion().then(setAppVersion).catch(() => setAppVersion(''))
   }, [])
 
   const handleRetentionChange = (days: string) => {
@@ -45,7 +48,7 @@ export default function SettingsPanel() {
     await saveSettings('max_image_size_mb', value)
   }
 
-  const handleHotkeyKeyDown = async (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleHotkeyKeyDown = async (event: React.KeyboardEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
 
@@ -55,20 +58,12 @@ export default function SettingsPanel() {
       return
     }
 
-    const key = getAcceleratorKey(event)
-    const modifiers = [
-      event.ctrlKey && 'Ctrl',
-      event.altKey && 'Alt',
-      event.shiftKey && 'Shift',
-      event.metaKey && 'Super',
-    ].filter(Boolean) as string[]
-
-    if (!key || modifiers.length === 0) {
+    const nextHotkey = buildHotkey(event)
+    if (!nextHotkey) {
       setHotkeyMessage('请至少按住 Ctrl、Alt、Shift 或 Win 之一，再按一个键。')
       return
     }
 
-    const nextHotkey = [...modifiers, key].join('+')
     const result = await window.api.setHotkey(nextHotkey)
     if (result.success && result.hotkey) {
       setHotkey(result.hotkey)
@@ -91,7 +86,7 @@ export default function SettingsPanel() {
             { value: '5', label: '5 天' },
             { value: '0', label: '永久' },
           ].map((opt) => (
-            <button key={opt.value} onClick={() => handleRetentionChange(opt.value)} className={`no-drag py-2 px-3 rounded-[10px] text-xs font-medium transition-[background-color,color,transform,box-shadow] duration-150 active:scale-[0.97] ${retentionDays === opt.value ? 'bg-[#007aff] text-white shadow-[0_3px_8px_rgba(0,122,255,0.22)]' : 'bg-white/85 dark:bg-[#2c2c2e] text-[#48484a] dark:text-[#d1d1d6] shadow-[0_1px_2px_rgba(60,60,67,0.08)] hover:bg-[#eaf4ff] dark:hover:bg-white/10 hover:text-[#007aff]'}`}>
+            <button key={opt.value} onClick={() => handleRetentionChange(opt.value)} className={`no-drag py-2 px-3 rounded-[10px] text-xs font-medium transition-[background-color,color,transform,box-shadow] duration-150 active:scale-[0.97] ${retentionDays === opt.value ? 'bg-[#007aff] text-white shadow-[0_3px_8px_rgba(0,122,255,0.22)]' : 'bg-white/[0.85] dark:bg-[#2c2c2e] text-[#48484a] dark:text-[#d1d1d6] shadow-[0_1px_2px_rgba(60,60,67,0.08)] hover:bg-[#eaf4ff] dark:hover:bg-white/10 hover:text-[#007aff]'}`}>
               {opt.label}
             </button>
           ))}
@@ -103,15 +98,17 @@ export default function SettingsPanel() {
       <div>
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">快捷键</h3>
         <div className="py-3 px-4 rounded-[14px] bg-white/80 dark:bg-[#2c2c2e] border border-white/80 dark:border-white/10 shadow-[0_1px_2px_rgba(60,60,67,0.08)]">
-          <input
-            value={isRecordingHotkey ? '请按下组合键…' : hotkey}
-            readOnly
-            onFocus={() => { setIsRecordingHotkey(true); setHotkeyMessage('正在录入，请按下新的组合键。') }}
+          <button
+            type="button"
+            onClick={() => { setIsRecordingHotkey(true); setHotkeyMessage('正在录入，请按下新的组合键。') }}
             onBlur={() => setIsRecordingHotkey(false)}
             onKeyDown={handleHotkeyKeyDown}
-            className="no-drag w-full cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-mono text-gray-700 outline-none transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:focus:ring-primary-900/40"
+            aria-pressed={isRecordingHotkey}
+            className={`no-drag w-full cursor-pointer rounded-lg border bg-white px-3 py-2 text-left text-sm font-mono text-gray-700 outline-none transition-colors focus:ring-2 focus:ring-primary-100 dark:bg-gray-700 dark:text-gray-200 dark:focus:ring-primary-900/40 ${isRecordingHotkey ? 'border-primary-400 ring-2 ring-primary-100 dark:border-primary-500 dark:ring-primary-900/40' : 'border-gray-200 dark:border-gray-600'}`}
             aria-label="全局快捷键"
-          />
+          >
+            {isRecordingHotkey ? '请按下组合键…' : hotkey}
+          </button>
           <p className="mt-2 text-[10px] text-gray-500 dark:text-gray-400">{hotkeyMessage}</p>
         </div>
       </div>
@@ -138,7 +135,7 @@ export default function SettingsPanel() {
       <ExportImport />
 
       <div className="pt-2 text-center">
-        <p className="text-[10px] text-gray-300 dark:text-gray-600">剪贴板管理器 v1.0.1</p>
+        <p className="text-[10px] text-gray-300 dark:text-gray-600">剪贴板管理器{appVersion ? ` v${appVersion}` : ''}</p>
       </div>
     </div>
   )
@@ -165,17 +162,4 @@ function SettingToggle({ sectionTitle, title, description, enabled, onChange }: 
       </label>
     </div>
   )
-}
-
-function getAcceleratorKey(event: React.KeyboardEvent<HTMLInputElement>): string | null {
-  if (new Set(['Control', 'Alt', 'Shift', 'Meta']).has(event.key)) return null
-  if (/^[a-zA-Z0-9]$/.test(event.key)) return event.key.toUpperCase()
-  if (/^F(?:[1-9]|1[0-9]|2[0-4])$/.test(event.key)) return event.key
-
-  const keyMap: Record<string, string> = {
-    ' ': 'Space', Tab: 'Tab', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
-    Enter: 'Enter', Backspace: 'Backspace', Delete: 'Delete', Home: 'Home', End: 'End',
-    PageUp: 'PageUp', PageDown: 'PageDown', Insert: 'Insert',
-  }
-  return keyMap[event.key] || null
 }

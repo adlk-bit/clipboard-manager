@@ -9,7 +9,7 @@ const api = {
   deleteHistory: (id: number) => ipcRenderer.invoke('history:delete', id),
   clearAllHistory: () => ipcRenderer.invoke('history:clearAll'),
   batchDeleteHistory: (ids: number[]) => ipcRenderer.invoke('history:batchDelete', ids),
-  copyToClipboard: (item: any) => ipcRenderer.invoke('history:copyToClipboard', item),
+  copyToClipboard: (id: number) => ipcRenderer.invoke('history:copyToClipboard', id),
   getFavoriteFolders: () => ipcRenderer.invoke('favorites:folders'),
   updateFavoriteMetadata: (id: number, folder: string, tags: string) => ipcRenderer.invoke('favorites:updateMetadata', id, folder, tags),
   moveFavorite: (id: number, direction: 'up' | 'down') => ipcRenderer.invoke('favorites:move', id, direction),
@@ -36,15 +36,25 @@ const api = {
   setSetting: (key: string, value: string) => ipcRenderer.invoke('settings:set', key, value),
   setHotkey: (hotkey: string) => ipcRenderer.invoke('settings:setHotkey', hotkey),
 
+  // Clipboard monitor
+  getMonitorPaused: () => ipcRenderer.invoke('monitor:getPaused'),
+  setMonitorPaused: (paused: boolean) => ipcRenderer.invoke('monitor:setPaused', paused),
+  onMonitorPausedChanged: (callback: (paused: boolean) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, paused: boolean) => callback(paused)
+    ipcRenderer.on('monitor:paused-changed', listener)
+    return () => ipcRenderer.removeListener('monitor:paused-changed', listener)
+  },
+
   // Stickers
   getStickers: () => ipcRenderer.invoke('stickers:list'),
   importStickers: () => ipcRenderer.invoke('stickers:import'),
   deleteSticker: (id: number) => ipcRenderer.invoke('stickers:delete', id),
-  sendSticker: (imagePath: string) => ipcRenderer.invoke('stickers:send', imagePath),
+  sendSticker: (id: number) => ipcRenderer.invoke('stickers:send', id),
 
   // Export/Import
   exportHistory: () => ipcRenderer.invoke('history:export'),
   importHistory: () => ipcRenderer.invoke('history:import'),
+  getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -1,14 +1,23 @@
-import { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, protocol } from 'electron'
+import { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, protocol, type NativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import { initDatabaseAsync, closeDatabase, getSetting } from './database'
-import { startMonitor, stopMonitor } from './clipboard-monitor'
+import { initDatabaseAsync, closeDatabase, getSetting, setSetting } from './database'
+import { startMonitor, stopMonitor, isMonitorPaused, setMonitorPaused } from './clipboard-monitor'
 import { startScheduler, stopScheduler } from './scheduler'
 import { registerIpcHandlers } from './ipc-handlers'
+import { isManagedAssetPath } from './asset-paths'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let registeredHotkey: string | null = null
+const isRuntimeTest = process.argv.includes('--runtime-smoke-test')
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'local-asset',
+    privileges: { standard: true, secure: true, supportFetchAPI: true },
+  },
+])
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -28,8 +37,7 @@ function registerCustomProtocol() {
       // Remove leading slash added by URL parser
       const filePath = decodeURIComponent(encodedPath.startsWith('/') ? encodedPath.slice(1) : encodedPath)
 
-      if (!filePath || !fs.existsSync(filePath)) {
-        console.error('local-asset: file not found:', filePath)
+      if (!filePath || !isManagedAssetPath(filePath) || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
         return new Response('Not Found', { status: 404 })
       }
 
@@ -70,8 +78,8 @@ function createWindow() {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
-      webSecurity: false
+      sandbox: true,
+      webSecurity: true
     }
   })
 
@@ -83,10 +91,16 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
 
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const currentUrl = mainWindow?.webContents.getURL()
+    if (currentUrl && url !== currentUrl) event.preventDefault()
+  })
+
   // Development sessions should be directly inspectable without relying on a
   // global shortcut that may already be owned by an installed release.
   mainWindow.once('ready-to-show', () => {
-    if (process.env.ELECTRON_RENDERER_URL && mainWindow && !mainWindow.isDestroyed()) {
+    if ((process.env.ELECTRON_RENDERER_URL || isRuntimeTest) && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show()
       mainWindow.focus()
     }
@@ -112,26 +126,22 @@ function createWindow() {
   mainWindow.on('unmaximize', notifyMaximizedState)
 }
 
-function createTray() {
-  const iconPath = path.join(app.getAppPath(), 'resources', 'tray-icon.png')
-
-  let trayIcon: nativeImage
-  try {
-    trayIcon = nativeImage.createFromPath(iconPath)
-    if (trayIcon.isEmpty()) throw new Error('Empty icon')
-  } catch {
-    trayIcon = createFallbackTrayIcon()
-  }
-
-  tray = new Tray(trayIcon.resize({ width: 16, height: 16 }))
-  tray.setToolTip('剪贴板管理器')
-
+function refreshTrayMenu() {
+  if (!tray) return
+  const paused = isMonitorPaused()
+  tray.setToolTip(paused ? '剪贴板管理器（记录已暂停）' : '剪贴板管理器')
   const contextMenu = Menu.buildFromTemplate([
     {
       label: '打开主窗口',
       click: () => {
         showWindow()
       }
+    },
+    {
+      label: paused ? '恢复记录' : '暂停记录',
+      type: 'checkbox',
+      checked: paused,
+      click: (menuItem) => applyMonitorPaused(menuItem.checked)
     },
     { type: 'separator' },
     {
@@ -143,12 +153,37 @@ function createTray() {
   ])
 
   tray.setContextMenu(contextMenu)
+}
+
+export function applyMonitorPaused(paused: boolean): boolean {
+  setMonitorPaused(paused)
+  setSetting('monitor_paused', paused ? 'true' : 'false')
+  refreshTrayMenu()
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('monitor:paused-changed', isMonitorPaused())
+  }
+  return isMonitorPaused()
+}
+
+function createTray() {
+  const iconPath = path.join(app.getAppPath(), 'resources', 'tray-icon.png')
+
+  let trayIcon: NativeImage
+  try {
+    trayIcon = nativeImage.createFromPath(iconPath)
+    if (trayIcon.isEmpty()) throw new Error('Empty icon')
+  } catch {
+    trayIcon = createFallbackTrayIcon()
+  }
+
+  tray = new Tray(trayIcon.resize({ width: 16, height: 16 }))
+  refreshTrayMenu()
   tray.on('double-click', () => {
     showWindow()
   })
 }
 
-function createFallbackTrayIcon(): nativeImage {
+function createFallbackTrayIcon(): NativeImage {
   const size = 16
   const buffer = Buffer.alloc(size * size * 4)
 
@@ -263,21 +298,28 @@ app.whenReady().then(async () => {
   // Initialize database
   await initDatabaseAsync()
 
+  // Privacy pause persists until the user explicitly resumes recording.
+  setMonitorPaused(getSetting('monitor_paused') === 'true')
+
   // Register IPC handlers
-  registerIpcHandlers(updateGlobalShortcut, hideWindow)
+  registerIpcHandlers(updateGlobalShortcut, hideWindow, applyMonitorPaused)
 
   // Create UI
   createWindow()
   createTray()
 
   // Start services
-  startMonitor(500, () => {
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('history:changed')
-  })
-  startScheduler()
+  if (!isRuntimeTest) {
+    startMonitor(500, () => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('history:changed')
+    })
+    startScheduler(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('history:changed')
+    })
 
-  // Register global shortcut
-  registerGlobalShortcut()
+    // Register global shortcut
+    registerGlobalShortcut()
+  }
 })
 
 app.on('window-all-closed', () => {

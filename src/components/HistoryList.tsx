@@ -21,6 +21,8 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
   const setFavoriteFolder = useStore((s) => s.setFavoriteFolder)
   const historySort = useStore((s) => s.historySort)
   const setHistorySort = useStore((s) => s.setHistorySort)
+  const monitorPaused = useStore((s) => s.monitorPaused)
+  const toggleMonitorPaused = useStore((s) => s.toggleMonitorPaused)
 
   const allSelected = historyItems.length > 0 && selectedIds.size === historyItems.length
   const pinnedFavorites = currentPage === 'favorites' ? historyItems.filter((item) => item.is_pinned) : []
@@ -41,23 +43,6 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
     } else {
       selectAll()
     }
-  }
-
-  if (historyItems.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 py-20">
-        <span className="text-4xl mb-3">
-          {currentPage === 'favorites' ? '⭐' : '📋'}
-        </span>
-        <p className="text-sm">
-          {searchQuery
-            ? '没有匹配的记录'
-            : currentPage === 'favorites'
-            ? '还没有收藏任何记录'
-            : '还没有复制记录，试试复制一些内容吧'}
-        </p>
-      </div>
-    )
   }
 
   return (
@@ -106,24 +91,48 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
       )}
 
       {currentPage === 'all' && !selectionMode && (
-        <div className="no-drag flex items-center gap-1 px-3.5 pt-3.5">
+        <div className="no-drag flex items-center justify-between gap-2 px-3.5 pt-3.5">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setHistorySort('recent')}
+              className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${historySort === 'recent' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+            >
+              最新
+            </button>
+            <button
+              onClick={() => setHistorySort('frequent')}
+              className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${historySort === 'frequent' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+            >
+              常用
+            </button>
+          </div>
           <button
-            onClick={() => setHistorySort('recent')}
-            className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${historySort === 'recent' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+            type="button"
+            onClick={toggleMonitorPaused}
+            aria-pressed={monitorPaused}
+            className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${monitorPaused ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/20 dark:text-amber-300' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
           >
-            最新
-          </button>
-          <button
-            onClick={() => setHistorySort('frequent')}
-            className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${historySort === 'frequent' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
-          >
-            常用
+            {monitorPaused ? '▶ 已暂停，点击恢复' : '⏸ 暂停记录'}
           </button>
         </div>
       )}
 
       {/* Card list */}
       <div className={`flex-1 overflow-y-auto space-y-2.5 ${currentPage === 'all' && !selectionMode ? 'px-3.5 pb-3.5 pt-2.5' : 'p-3.5'}`}>
+        {historyItems.length === 0 && (
+          <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 py-20">
+            <span className="text-4xl mb-3">{currentPage === 'favorites' ? '⭐' : '📋'}</span>
+            <p className="text-sm">
+              {searchQuery
+                ? '没有匹配的记录'
+                : currentPage === 'favorites'
+                ? '还没有收藏任何记录'
+                : monitorPaused
+                ? '记录已暂停，恢复后会继续收集新复制内容'
+                : '还没有复制记录，试试复制一些内容吧'}
+            </p>
+          </div>
+        )}
         {currentPage === 'favorites' && !selectionMode && (
           <div className="no-drag flex gap-1.5 overflow-x-auto pb-1.5">
             <button onClick={() => setFavoriteFolder('')} className={`shrink-0 rounded-full px-2 py-1 text-[10px] ${favoriteFolder === '' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>全部</button>
@@ -146,7 +155,7 @@ export default function HistoryList({ onCopy }: HistoryListProps) {
           <HistoryCard key={item.id} item={item} onCopy={onCopy} />
         ))}
 
-        {!selectionMode && (
+        {!selectionMode && historyItems.length > 0 && (
           <div className="pt-2 text-center flex gap-4 justify-center">
             <button
               onClick={handleToggleSelectionMode}

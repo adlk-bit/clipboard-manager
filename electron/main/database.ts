@@ -2,11 +2,54 @@ import path from 'path'
 import { app } from 'electron'
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js'
 import fs from 'fs'
+import { createHash, randomUUID } from 'crypto'
+import type { BackupSnapshot, BackupHistoryItem, BackupStickerItem } from './backup'
+import { getHistoryImagesDir, getStickersDir, isPathInside } from './asset-paths'
 
 let db: SqlJsDatabase
 const DB_PATH = path.join(app.getPath('userData'), 'clipboard.db')
+const DB_BACKUP_PATH = `${DB_PATH}.bak`
+const DB_TEMP_PATH = `${DB_PATH}.tmp`
 let saveTimer: NodeJS.Timeout | null = null
 let savePending = false
+
+function writeFileDurably(filePath: string, data: Buffer): void {
+  const fd = fs.openSync(filePath, 'w')
+  try {
+    fs.writeFileSync(fd, data)
+    fs.fsyncSync(fd)
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
+/** Keep the previous complete database until the new export is safely in place. */
+function writeDatabaseAtomically(data: Uint8Array): void {
+  const buffer = Buffer.from(data)
+  writeFileDurably(DB_TEMP_PATH, buffer)
+
+  if (fs.existsSync(DB_BACKUP_PATH)) fs.unlinkSync(DB_BACKUP_PATH)
+  if (fs.existsSync(DB_PATH)) fs.renameSync(DB_PATH, DB_BACKUP_PATH)
+
+  try {
+    fs.renameSync(DB_TEMP_PATH, DB_PATH)
+  } catch (error) {
+    if (!fs.existsSync(DB_PATH) && fs.existsSync(DB_BACKUP_PATH)) {
+      fs.renameSync(DB_BACKUP_PATH, DB_PATH)
+    }
+    throw error
+  }
+}
+
+function flushDatabase(): void {
+  if (!db || !savePending) return
+  try {
+    writeDatabaseAtomically(db.export())
+    savePending = false
+  } catch (error) {
+    console.error('Failed to save clipboard database:', error)
+  }
+}
 
 /** Debounced save — batches rapid writes into a single disk flush */
 function saveDb() {
@@ -15,10 +58,8 @@ function saveDb() {
   if (saveTimer) return // already scheduled
   saveTimer = setTimeout(() => {
     saveTimer = null
-    savePending = false
-    const data = db.export()
-    const buffer = Buffer.from(data)
-    fs.writeFileSync(DB_PATH, buffer)
+    flushDatabase()
+    if (savePending) saveDb()
   }, 500)
 }
 
@@ -28,11 +69,52 @@ function saveDbSync() {
     clearTimeout(saveTimer)
     saveTimer = null
   }
-  if (!db || !savePending) return
-  savePending = false
-  const data = db.export()
-  const buffer = Buffer.from(data)
-  fs.writeFileSync(DB_PATH, buffer)
+  flushDatabase()
+}
+
+function isDatabaseHealthy(database: SqlJsDatabase): boolean {
+  try {
+    const result = database.exec('PRAGMA quick_check')
+    return String(result[0]?.values[0]?.[0] || '').toLowerCase() === 'ok'
+  } catch {
+    return false
+  }
+}
+
+function openDatabaseFile(SQL: any, filePath: string): SqlJsDatabase | null {
+  if (!fs.existsSync(filePath)) return null
+  try {
+    const candidate = new SQL.Database(new Uint8Array(fs.readFileSync(filePath))) as SqlJsDatabase
+    if (isDatabaseHealthy(candidate)) return candidate
+    candidate.close()
+  } catch (error) {
+    console.error(`Failed to open database file ${filePath}:`, error)
+  }
+  return null
+}
+
+function recoverDatabase(SQL: any): SqlJsDatabase {
+  const primary = openDatabaseFile(SQL, DB_PATH)
+  if (primary) {
+    try { if (fs.existsSync(DB_TEMP_PATH)) fs.unlinkSync(DB_TEMP_PATH) } catch { /* ignore stale temp */ }
+    return primary
+  }
+
+  const backup = openDatabaseFile(SQL, DB_BACKUP_PATH)
+  if (backup) {
+    try {
+      if (fs.existsSync(DB_PATH)) {
+        fs.renameSync(DB_PATH, `${DB_PATH}.corrupt-${Date.now()}`)
+      }
+      fs.copyFileSync(DB_BACKUP_PATH, DB_PATH)
+      console.warn('Recovered clipboard database from the last known-good snapshot.')
+    } catch (error) {
+      console.error('Failed to restore clipboard database snapshot:', error)
+    }
+    return backup
+  }
+
+  return new SQL.Database()
 }
 
 export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
@@ -50,17 +132,12 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
 
   let SQL: any
   if (wasmBinary) {
-    SQL = await initSqlJs({ wasmBinary })
+    SQL = await initSqlJs({ wasmBinary: Uint8Array.from(wasmBinary).buffer })
   } else {
     SQL = await initSqlJs()
   }
 
-  if (fs.existsSync(DB_PATH)) {
-    const fileBuffer = fs.readFileSync(DB_PATH)
-    db = new SQL.Database(new Uint8Array(fileBuffer))
-  } else {
-    db = new SQL.Database()
-  }
+  db = recoverDatabase(SQL)
 
   db.run(`
     CREATE TABLE IF NOT EXISTS clipboard_history (
@@ -93,6 +170,9 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
     db.run("UPDATE clipboard_history SET last_used_at = created_at WHERE last_used_at = ''")
   }
   if (!historyColumns.has('content_hash')) db.run("ALTER TABLE clipboard_history ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''")
+  db.run("UPDATE clipboard_history SET last_used_at = created_at WHERE last_used_at IS NULL OR last_used_at = ''")
+  db.run('CREATE INDEX IF NOT EXISTS idx_history_recent ON clipboard_history(is_pinned, last_used_at DESC)')
+  db.run('CREATE INDEX IF NOT EXISTS idx_history_hash ON clipboard_history(type, content_hash)')
 
   db.run(`
     CREATE TABLE IF NOT EXISTS stickers (
@@ -110,15 +190,14 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
     )
   `)
 
-  const existingRetention = getSetting('retention_days')
-  if (!existingRetention) {
-    setSetting('retention_days', '3')
-    setSetting('hotkey', 'Ctrl+Shift+V')
-    setSetting('dark_mode', 'false')
-  }
+  if (!getSetting('retention_days')) setSetting('retention_days', '3')
+  if (!getSetting('hotkey')) setSetting('hotkey', 'Ctrl+Shift+V')
+  if (!getSetting('dark_mode')) setSetting('dark_mode', 'false')
   if (!getSetting('max_history_items')) setSetting('max_history_items', '500')
   if (!getSetting('max_image_size_mb')) setSetting('max_image_size_mb', '10')
+  if (!getSetting('monitor_paused')) setSetting('monitor_paused', 'false')
 
+  cleanupStorageIntegrity()
   saveDb()
   return db
 }
@@ -212,7 +291,7 @@ function removeHistoryRows(ids: number[]): number {
   stmt.bind(ids)
   while (stmt.step()) {
     const imagePath = stmt.getAsObject().image_path as string | null
-    if (imagePath && fs.existsSync(imagePath)) {
+    if (imagePath && isPathInside(getHistoryImagesDir(), imagePath) && fs.existsSync(imagePath)) {
       try { fs.unlinkSync(imagePath) } catch (error) { console.error('Failed to remove history image:', error) }
     }
   }
@@ -226,7 +305,7 @@ export function enforceHistoryLimit(limit: number): number {
   const total = Number(db.exec('SELECT COUNT(*) AS count FROM clipboard_history')[0]?.values[0]?.[0] || 0)
   const overflow = total - limit
   if (overflow <= 0) return 0
-  const stmt = db.prepare('SELECT id FROM clipboard_history WHERE is_pinned = 0 AND is_favorite = 0 ORDER BY created_at ASC, id ASC LIMIT ?')
+  const stmt = db.prepare("SELECT id FROM clipboard_history WHERE is_pinned = 0 AND is_favorite = 0 ORDER BY COALESCE(NULLIF(last_used_at, ''), created_at) ASC, id ASC LIMIT ?")
   stmt.bind([overflow])
   const ids: number[] = []
   while (stmt.step()) ids.push(Number(stmt.getAsObject().id))
@@ -296,7 +375,7 @@ export function getHistoryList(
     } else if (sort === 'frequent') {
       query += ' ORDER BY is_pinned DESC, use_count DESC, last_used_at DESC, created_at DESC'
     } else {
-      query += ' ORDER BY is_pinned DESC, created_at DESC'
+      query += " ORDER BY is_pinned DESC, COALESCE(NULLIF(last_used_at, ''), created_at) DESC, id DESC"
     }
 
     const stmt = db.prepare(query)
@@ -337,7 +416,7 @@ export function toggleFavorite(id: number): void {
   saveDb()
 }
 
-function getHistoryById(id: number): HistoryItem | null {
+export function getHistoryById(id: number): HistoryItem | null {
   const stmt = db.prepare('SELECT * FROM clipboard_history WHERE id = ?')
   stmt.bind([id])
   const item = stmt.step() ? stmt.getAsObject() as unknown as HistoryItem : null
@@ -376,21 +455,7 @@ export function moveFavorite(id: number, direction: 'up' | 'down'): boolean {
 
 export function deleteHistory(id: number): void {
   if (!db) return
-  try {
-    const stmt = db.prepare('SELECT image_path FROM clipboard_history WHERE id = ?')
-    stmt.bind([id])
-    if (stmt.step()) {
-      const row = stmt.getAsObject()
-      const imgPath = row.image_path as string | null
-      if (imgPath && fs.existsSync(imgPath)) {
-        fs.unlinkSync(imgPath)
-      }
-    }
-    stmt.free()
-  } catch { /* ignore */ }
-
-  db.run('DELETE FROM clipboard_history WHERE id = ?', [id])
-  saveDb()
+  if (removeHistoryRows([id]) > 0) saveDb()
 }
 
 export function clearAllHistory(): void {
@@ -400,7 +465,7 @@ export function clearAllHistory(): void {
     while (stmt.step()) {
       const row = stmt.getAsObject()
       const imgPath = row.image_path as string
-      if (imgPath && fs.existsSync(imgPath)) {
+      if (imgPath && isPathInside(getHistoryImagesDir(), imgPath) && fs.existsSync(imgPath)) {
         fs.unlinkSync(imgPath)
       }
     }
@@ -414,24 +479,9 @@ export function clearAllHistory(): void {
 export function batchDeleteHistory(ids: number[]): number {
   if (!db || ids.length === 0) return 0
   try {
-    const placeholders = ids.map(() => '?').join(',')
-    // Delete associated image files
-    const stmt = db.prepare(`SELECT image_path FROM clipboard_history WHERE id IN (${placeholders})`)
-    stmt.bind(ids)
-    while (stmt.step()) {
-      const row = stmt.getAsObject()
-      const imgPath = row.image_path as string | null
-      if (imgPath && fs.existsSync(imgPath)) {
-        fs.unlinkSync(imgPath)
-      }
-    }
-    stmt.free()
-
-    // Delete records
-    db.run(`DELETE FROM clipboard_history WHERE id IN (${placeholders})`, ids)
-    const changes = db.getRowsModified()
-    saveDb()
-    return changes
+    const removed = removeHistoryRows(ids)
+    if (removed > 0) saveDb()
+    return removed
   } catch {
     return 0
   }
@@ -440,13 +490,16 @@ export function batchDeleteHistory(ids: number[]): number {
 export function deleteExpiredHistory(retentionDays: number): number {
   if (!db || retentionDays <= 0) return 0
   try {
-    db.run(
-      "DELETE FROM clipboard_history WHERE is_pinned = 0 AND is_favorite = 0 AND datetime(created_at, '+' || ? || ' days') < datetime('now', 'localtime')",
-      [retentionDays]
+    const stmt = db.prepare(
+      "SELECT id FROM clipboard_history WHERE is_pinned = 0 AND is_favorite = 0 AND datetime(COALESCE(NULLIF(last_used_at, ''), created_at), '+' || ? || ' days') < datetime('now')"
     )
-    const changes = db.getRowsModified()
-    saveDb()
-    return changes
+    stmt.bind([retentionDays])
+    const ids: number[] = []
+    while (stmt.step()) ids.push(Number(stmt.getAsObject().id))
+    stmt.free()
+    const removed = removeHistoryRows(ids)
+    if (removed > 0) saveDb()
+    return removed
   } catch {
     return 0
   }
@@ -480,6 +533,15 @@ export function getStickerList(): StickerItem[] {
   }
 }
 
+export function getStickerById(id: number): StickerItem | null {
+  if (!db || !Number.isInteger(id) || id < 1) return null
+  const stmt = db.prepare('SELECT * FROM stickers WHERE id = ?')
+  stmt.bind([id])
+  const item = stmt.step() ? stmt.getAsObject() as unknown as StickerItem : null
+  stmt.free()
+  return item
+}
+
 export function deleteSticker(id: number): void {
   if (!db) return
   try {
@@ -488,7 +550,7 @@ export function deleteSticker(id: number): void {
     if (stmt.step()) {
       const row = stmt.getAsObject()
       const imgPath = row.image_path as string
-      if (imgPath && fs.existsSync(imgPath)) {
+      if (imgPath && isPathInside(getStickersDir(), imgPath) && fs.existsSync(imgPath)) {
         fs.unlinkSync(imgPath)
       }
     }
@@ -499,30 +561,241 @@ export function deleteSticker(id: number): void {
   saveDb()
 }
 
-export function exportHistory(): string {
-  const results = getHistoryList()
-  return JSON.stringify(results, null, 2)
+const PORTABLE_SETTING_KEYS = ['retention_days', 'dark_mode', 'max_history_items', 'max_image_size_mb', 'monitor_paused'] as const
+
+export function getBackupSnapshot(): BackupSnapshot {
+  const historyStmt = db.prepare('SELECT * FROM clipboard_history ORDER BY id ASC')
+  const history: BackupHistoryItem[] = []
+  while (historyStmt.step()) history.push(historyStmt.getAsObject() as unknown as BackupHistoryItem)
+  historyStmt.free()
+
+  const settings: Record<string, string> = {}
+  for (const key of PORTABLE_SETTING_KEYS) {
+    const value = getSetting(key)
+    if (value !== null) settings[key] = value
+  }
+
+  return { history, stickers: getStickerList(), settings }
 }
 
-export function importHistory(jsonStr: string): number {
-  if (!db) return 0
-  try {
-    const items: HistoryItem[] = JSON.parse(jsonStr)
-    let count = 0
-    const stmt = db.prepare(
-      'INSERT INTO clipboard_history (type, content, image_path, is_pinned, is_favorite, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-    )
+export interface BackupImportResult {
+  historyCount: number
+  stickerCount: number
+  skippedDuplicates: number
+}
 
-    for (const item of items) {
-      stmt.run([item.type, item.content, item.image_path, item.is_pinned, item.is_favorite, item.created_at])
-      count++
-    }
-    stmt.free()
-    saveDb()
-    return count
+function fileHash(filePath: string): string {
+  try {
+    return createHash('sha256').update(fs.readFileSync(filePath)).digest('hex')
   } catch {
-    return 0
+    return ''
   }
+}
+
+function removeFiles(filePaths: Iterable<string>): void {
+  for (const filePath of filePaths) {
+    try {
+      const managed = filePath && (
+        isPathInside(getHistoryImagesDir(), filePath) || isPathInside(getStickersDir(), filePath)
+      )
+      if (managed && fs.existsSync(filePath)) fs.unlinkSync(filePath)
+    } catch (error) {
+      console.error('Failed to remove imported or replaced asset:', error)
+    }
+  }
+}
+
+function validatedPortableSetting(key: string, value: string): string | null {
+  if (key === 'dark_mode') return value === 'true' ? 'true' : value === 'false' ? 'false' : null
+  if (key === 'retention_days') return ['0', '1', '3', '5'].includes(value) ? value : null
+  if (key === 'max_history_items') return ['100', '300', '500', '1000'].includes(value) ? value : null
+  if (key === 'max_image_size_mb') return ['1', '5', '10', '20'].includes(value) ? value : null
+  if (key === 'monitor_paused') return value === 'true' ? 'true' : value === 'false' ? 'false' : null
+  return null
+}
+
+export function importBackupSnapshot(snapshot: BackupSnapshot, mode: 'merge' | 'replace'): BackupImportResult {
+  if (!db) throw new Error('Database is not initialized.')
+
+  const oldFiles = new Set<string>()
+  if (mode === 'replace') {
+    for (const item of getBackupSnapshot().history) if (item.image_path) oldFiles.add(item.image_path)
+    for (const sticker of getStickerList()) oldFiles.add(sticker.image_path)
+  }
+
+  const existingStickerHashes = new Set(
+    mode === 'merge' ? getStickerList().map((item) => fileHash(item.image_path)).filter(Boolean) : []
+  )
+  const unusedImportedFiles = new Set<string>()
+  let historyCount = 0
+  let stickerCount = 0
+  let skippedDuplicates = 0
+
+  db.run('BEGIN TRANSACTION')
+  try {
+    if (mode === 'replace') {
+      db.run('DELETE FROM clipboard_history')
+      db.run('DELETE FROM stickers')
+    }
+
+    for (const item of snapshot.history) {
+      const duplicateQuery = item.type === 'text'
+        ? 'SELECT id FROM clipboard_history WHERE type = ? AND content = ? LIMIT 1'
+        : "SELECT id FROM clipboard_history WHERE type = ? AND content_hash = ? AND content_hash <> '' LIMIT 1"
+      const duplicateStmt = db.prepare(duplicateQuery)
+      duplicateStmt.bind(item.type === 'text' ? [item.type, item.content] : [item.type, item.content_hash])
+      const duplicateId = duplicateStmt.step() ? Number(duplicateStmt.getAsObject().id) : 0
+      duplicateStmt.free()
+
+      if (duplicateId) {
+        db.run(`
+          UPDATE clipboard_history SET
+            is_pinned = MAX(is_pinned, ?),
+            is_favorite = MAX(is_favorite, ?),
+            favorite_folder = CASE WHEN favorite_folder = '' THEN ? ELSE favorite_folder END,
+            favorite_tags = CASE WHEN favorite_tags = '' THEN ? ELSE favorite_tags END,
+            use_count = MAX(use_count, ?),
+            last_used_at = CASE WHEN datetime(?) > datetime(last_used_at) THEN ? ELSE last_used_at END,
+            created_at = CASE WHEN datetime(?) < datetime(created_at) THEN ? ELSE created_at END
+          WHERE id = ?
+        `, [
+          item.is_pinned, item.is_favorite, item.favorite_folder, item.favorite_tags, item.use_count,
+          item.last_used_at, item.last_used_at, item.created_at, item.created_at, duplicateId,
+        ])
+        if (item.image_path) unusedImportedFiles.add(item.image_path)
+        skippedDuplicates++
+        continue
+      }
+
+      db.run(`
+        INSERT INTO clipboard_history (
+          type, content, image_path, is_pinned, is_favorite, created_at,
+          favorite_folder, favorite_tags, favorite_sort_order, use_count, last_used_at, content_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        item.type, item.content, item.image_path, item.is_pinned, item.is_favorite, item.created_at,
+        item.favorite_folder, item.favorite_tags, item.favorite_sort_order, item.use_count, item.last_used_at, item.content_hash,
+      ])
+      historyCount++
+    }
+
+    for (const sticker of snapshot.stickers) {
+      const hash = fileHash(sticker.image_path)
+      if (!hash || existingStickerHashes.has(hash)) {
+        unusedImportedFiles.add(sticker.image_path)
+        skippedDuplicates++
+        continue
+      }
+      db.run('INSERT INTO stickers (name, image_path, created_at) VALUES (?, ?, ?)', [sticker.name, sticker.image_path, sticker.created_at])
+      existingStickerHashes.add(hash)
+      stickerCount++
+    }
+
+    for (const [key, rawValue] of Object.entries(snapshot.settings)) {
+      const value = validatedPortableSetting(key, rawValue)
+      if (value !== null) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value])
+    }
+
+    db.run('COMMIT')
+  } catch (error) {
+    try { db.run('ROLLBACK') } catch { /* ignore rollback failure */ }
+    throw error
+  }
+
+  removeFiles(unusedImportedFiles)
+  if (mode === 'replace') removeFiles(oldFiles)
+  enforceHistoryLimit(parseInt(getSetting('max_history_items') || '500', 10))
+  saveDb()
+  return { historyCount, stickerCount, skippedDuplicates }
+}
+
+export interface StorageCleanupResult {
+  missingHistoryRows: number
+  missingStickerRows: number
+  orphanFiles: number
+}
+
+function relocateAssetToManagedDirectory(filePath: string, directory: string, prefix: string): string {
+  if (isPathInside(directory, filePath)) return filePath
+  const rawExtension = path.extname(filePath).toLowerCase()
+  const extension = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'].includes(rawExtension) ? rawExtension : '.png'
+  const destination = path.join(directory, `${prefix}_${Date.now()}_${randomUUID()}${extension}`)
+  fs.copyFileSync(filePath, destination)
+  return destination
+}
+
+export function cleanupStorageIntegrity(): StorageCleanupResult {
+  if (!db) return { missingHistoryRows: 0, missingStickerRows: 0, orphanFiles: 0 }
+
+  const referencedFiles = new Set<string>()
+  const missingHistoryIds: number[] = []
+  const historyStmt = db.prepare("SELECT id, image_path FROM clipboard_history WHERE type = 'image'")
+  while (historyStmt.step()) {
+    const row = historyStmt.getAsObject()
+    let imagePath = typeof row.image_path === 'string' ? row.image_path : ''
+    if (!imagePath || !fs.existsSync(imagePath)) missingHistoryIds.push(Number(row.id))
+    else {
+      try {
+        const relocatedPath = relocateAssetToManagedDirectory(imagePath, getHistoryImagesDir(), 'migrated_clip')
+        if (relocatedPath !== imagePath) {
+          db.run('UPDATE clipboard_history SET image_path = ? WHERE id = ?', [relocatedPath, Number(row.id)])
+          imagePath = relocatedPath
+        }
+        referencedFiles.add(path.resolve(imagePath).toLowerCase())
+      } catch (error) {
+        console.error('Failed to relocate legacy history image:', error)
+        missingHistoryIds.push(Number(row.id))
+      }
+    }
+  }
+  historyStmt.free()
+  const missingHistoryRows = removeHistoryRows(missingHistoryIds)
+
+  const missingStickerIds: number[] = []
+  const stickerStmt = db.prepare('SELECT id, image_path FROM stickers')
+  while (stickerStmt.step()) {
+    const row = stickerStmt.getAsObject()
+    let imagePath = typeof row.image_path === 'string' ? row.image_path : ''
+    if (!imagePath || !fs.existsSync(imagePath)) missingStickerIds.push(Number(row.id))
+    else {
+      try {
+        const relocatedPath = relocateAssetToManagedDirectory(imagePath, getStickersDir(), 'migrated_sticker')
+        if (relocatedPath !== imagePath) {
+          db.run('UPDATE stickers SET image_path = ? WHERE id = ?', [relocatedPath, Number(row.id)])
+          imagePath = relocatedPath
+        }
+        referencedFiles.add(path.resolve(imagePath).toLowerCase())
+      } catch (error) {
+        console.error('Failed to relocate legacy sticker image:', error)
+        missingStickerIds.push(Number(row.id))
+      }
+    }
+  }
+  stickerStmt.free()
+  if (missingStickerIds.length > 0) {
+    const placeholders = missingStickerIds.map(() => '?').join(',')
+    db.run(`DELETE FROM stickers WHERE id IN (${placeholders})`, missingStickerIds)
+  }
+  const missingStickerRows = missingStickerIds.length
+
+  let orphanFiles = 0
+  for (const directory of [getHistoryImagesDir(), getStickersDir()]) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isFile()) continue
+      const filePath = path.join(directory, entry.name)
+      if (!referencedFiles.has(path.resolve(filePath).toLowerCase()) && isPathInside(directory, filePath)) {
+        try {
+          fs.unlinkSync(filePath)
+          orphanFiles++
+        } catch (error) {
+          console.error('Failed to remove orphaned asset:', error)
+        }
+      }
+    }
+  }
+
+  if (missingHistoryRows > 0 || missingStickerRows > 0 || orphanFiles > 0) saveDb()
+  return { missingHistoryRows, missingStickerRows, orphanFiles }
 }
 
 export function closeDatabase(): void {

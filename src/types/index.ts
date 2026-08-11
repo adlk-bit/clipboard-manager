@@ -26,6 +26,26 @@ export interface HistoryStats {
   imageBytes: number
 }
 
+export interface BackupExportResult {
+  filePath: string
+  historyCount: number
+  stickerCount: number
+  skippedFiles: number
+}
+
+export type BackupImportResult =
+  | { status: 'cancelled' }
+  | { status: 'error'; error: string }
+  | {
+      status: 'success'
+      mode: 'merge' | 'replace'
+      source: 'portable' | 'legacy-json'
+      historyCount: number
+      stickerCount: number
+      skippedItems: number
+      skippedDuplicates: number
+    }
+
 export type PageView = 'all' | 'favorites' | 'stickers' | 'settings'
 
 export interface ElectronApi {
@@ -35,7 +55,7 @@ export interface ElectronApi {
   deleteHistory: (id: number) => Promise<void>
   clearAllHistory: () => Promise<void>
   batchDeleteHistory: (ids: number[]) => Promise<number>
-  copyToClipboard: (item: HistoryItem) => Promise<void>
+  copyToClipboard: (id: number) => Promise<{ success: boolean; type?: 'text' | 'image'; error?: string }>
   getFavoriteFolders: () => Promise<string[]>
   updateFavoriteMetadata: (id: number, folder: string, tags: string) => Promise<void>
   moveFavorite: (id: number, direction: 'up' | 'down') => Promise<boolean>
@@ -51,12 +71,16 @@ export interface ElectronApi {
   getSetting: (key: string) => Promise<string | null>
   setSetting: (key: string, value: string) => Promise<void>
   setHotkey: (hotkey: string) => Promise<{ success: boolean; hotkey?: string; error?: string }>
+  getMonitorPaused: () => Promise<boolean>
+  setMonitorPaused: (paused: boolean) => Promise<boolean>
+  onMonitorPausedChanged: (callback: (paused: boolean) => void) => () => void
   getStickers: () => Promise<StickerItem[]>
   importStickers: () => Promise<StickerItem[]>
   deleteSticker: (id: number) => Promise<StickerItem[]>
-  sendSticker: (imagePath: string) => Promise<boolean>
-  exportHistory: () => Promise<string | null>
-  importHistory: () => Promise<number>
+  sendSticker: (id: number) => Promise<{ success: boolean; error?: string }>
+  exportHistory: () => Promise<BackupExportResult | null>
+  importHistory: () => Promise<BackupImportResult>
+  getAppVersion: () => Promise<string>
 }
 
 declare global {

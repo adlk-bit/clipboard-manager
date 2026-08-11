@@ -16,8 +16,8 @@ export default function StickerCard({ sticker, onCopy }: StickerCardProps) {
 
   const handleSend = async () => {
     setCopied(true)
-    await window.api.sendSticker(sticker.image_path)
-    onCopy('贴图已复制到剪贴板')
+    const result = await window.api.sendSticker(sticker.id)
+    onCopy(result.success ? '贴图已复制到剪贴板' : '贴图复制失败')
     setTimeout(() => setCopied(false), 800)
   }
 

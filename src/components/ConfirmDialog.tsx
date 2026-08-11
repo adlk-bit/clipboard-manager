@@ -41,7 +41,7 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
   }
 
   return (
-    <div className="absolute inset-0 bg-black/25 dark:bg-black/55 flex items-center justify-center z-50" onClick={handleCancel}>
+    <div className="absolute inset-0 bg-black/25 dark:bg-black/[0.55] flex items-center justify-center z-50" onClick={handleCancel}>
       <div
         className="no-drag bg-white/95 dark:bg-[#2c2c2e]/95 rounded-[18px] p-5 mx-4 shadow-[0_18px_42px_rgba(0,0,0,0.24)] border border-white/80 dark:border-white/10 max-w-xs w-full backdrop-blur-xl"
         onClick={(e) => e.stopPropagation()}

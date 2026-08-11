@@ -56,7 +56,7 @@ export default function WindowTitleBar() {
 
   return (
     <header
-      className="window-titlebar drag-region flex h-10 shrink-0 items-center justify-between border-b border-white/70 bg-white/78 pl-3 dark:border-white/10 dark:bg-[#2c2c2e]/88"
+      className="window-titlebar drag-region flex h-10 shrink-0 items-center justify-between border-b border-white/70 bg-white/[0.78] pl-3 dark:border-white/10 dark:bg-[#2c2c2e]/[0.88]"
       onDoubleClick={toggleMaximize}
     >
       <div className="flex min-w-0 items-center gap-2">

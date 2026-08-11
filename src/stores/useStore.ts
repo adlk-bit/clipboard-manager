@@ -33,12 +33,16 @@ interface AppState {
   retentionDays: string
   darkMode: boolean
   hotkey: string
+  monitorPaused: boolean
   maxHistoryItems: string
   maxImageSizeMb: string
   historyStats: HistoryStats
   setRetentionDays: (days: string) => void
   setDarkMode: (on: boolean) => void
   setHotkey: (hotkey: string) => void
+  setMonitorPaused: (paused: boolean) => void
+  toggleMonitorPaused: () => Promise<void>
+  loadMonitorPaused: () => Promise<void>
   setMaxHistoryItems: (value: string) => void
   setMaxImageSizeMb: (value: string) => void
   loadHistoryStats: () => Promise<void>
@@ -146,12 +150,33 @@ export const useStore = create<AppState>((set, get) => ({
   retentionDays: '3',
   darkMode: false,
   hotkey: 'Ctrl+Shift+V',
+  monitorPaused: false,
   maxHistoryItems: '500',
   maxImageSizeMb: '10',
   historyStats: { itemCount: 0, imageBytes: 0 },
   setRetentionDays: (days) => set({ retentionDays: days }),
   setDarkMode: (on) => set({ darkMode: on }),
   setHotkey: (hotkey) => set({ hotkey }),
+  setMonitorPaused: (paused) => set({ monitorPaused: paused }),
+  toggleMonitorPaused: async () => {
+    const previous = get().monitorPaused
+    const next = !previous
+    set({ monitorPaused: next })
+    try {
+      const paused = await window.api.setMonitorPaused(next)
+      set({ monitorPaused: paused })
+    } catch (e) {
+      set({ monitorPaused: previous })
+      console.error('Failed to update clipboard monitor state:', e)
+    }
+  },
+  loadMonitorPaused: async () => {
+    try {
+      set({ monitorPaused: await window.api.getMonitorPaused() })
+    } catch (e) {
+      console.error('Failed to load clipboard monitor state:', e)
+    }
+  },
   setMaxHistoryItems: (value) => set({ maxHistoryItems: value }),
   setMaxImageSizeMb: (value) => set({ maxImageSizeMb: value }),
   loadHistoryStats: async () => {

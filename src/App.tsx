@@ -12,6 +12,7 @@ import { useStore } from './stores/useStore'
 export default function App() {
   const currentPage = useStore((s) => s.currentPage)
   const loadHistory = useStore((s) => s.loadHistory)
+  const loadSettings = useStore((s) => s.loadSettings)
   const confirmDeleteId = useStore((s) => s.confirmDeleteId)
   const confirmClearAll = useStore((s) => s.confirmClearAll)
   const confirmBatchDelete = useStore((s) => s.confirmBatchDelete)
@@ -20,6 +21,9 @@ export default function App() {
   const selectionMode = useStore((s) => s.selectionMode)
   const keyboardActiveId = useStore((s) => s.keyboardActiveId)
   const setKeyboardActiveId = useStore((s) => s.setKeyboardActiveId)
+  const monitorPaused = useStore((s) => s.monitorPaused)
+  const loadMonitorPaused = useStore((s) => s.loadMonitorPaused)
+  const setMonitorPaused = useStore((s) => s.setMonitorPaused)
 
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'info' } | null>(null)
   const [toastKey, setToastKey] = useState(0)
@@ -35,7 +39,11 @@ export default function App() {
 
   useEffect(() => {
     loadHistory()
+    loadSettings()
+    loadMonitorPaused()
   }, [])
+
+  useEffect(() => window.api.onMonitorPausedChanged(setMonitorPaused), [setMonitorPaused])
 
   useEffect(() => {
     return window.api.onHistoryChanged(() => {
@@ -69,9 +77,11 @@ export default function App() {
         const item = historyItems.find((historyItem) => historyItem.id === keyboardActiveId)
         if (!item) return
         event.preventDefault()
-        await window.api.copyToClipboard(item)
-        setKeyboardActiveId(null)
-        await window.api.hideWindow()
+        const result = await window.api.copyToClipboard(item.id)
+        if (result.success) {
+          setKeyboardActiveId(null)
+          await window.api.hideWindow()
+        }
       }
     }
 
@@ -90,7 +100,7 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-w-0 bg-[#f7f7f8] dark:bg-[#1c1c1e]">
         {/* Header */}
-        <div className="app-header drag-region flex items-center justify-between px-5 py-3 bg-white/72 dark:bg-[#2c2c2e]/82 border-b border-white/70 dark:border-white/10 backdrop-blur-xl shrink-0">
+        <div className="app-header drag-region flex items-center justify-between px-5 py-3 bg-white/[0.72] dark:bg-[#2c2c2e]/[0.82] border-b border-white/70 dark:border-white/10 backdrop-blur-xl shrink-0">
           <h1 className="text-[15px] leading-5 font-semibold tracking-[-0.01em] text-[#1d1d1f] dark:text-[#f5f5f7] no-drag">
             {currentPage === 'all' && '剪贴板历史'}
             {currentPage === 'favorites' && '收藏记录'}
@@ -113,7 +123,9 @@ export default function App() {
 
         {/* Status bar */}
         <div className="app-statusbar px-5 py-2 border-t border-white/70 dark:border-white/10 bg-white/60 dark:bg-[#2c2c2e]/70 text-[11px] leading-4 text-[#6e6e73] dark:text-[#98989d] backdrop-blur-xl shrink-0">
-          {currentPage === 'all' && <span>自动记录中 · 点击卡片右侧 📋 图标复制 · 按 Ctrl+Shift+V 唤起窗口</span>}
+          {currentPage === 'all' && (
+            <span>{monitorPaused ? '记录已暂停' : '自动记录中'} · 点击卡片右侧 📋 图标复制 · 按 Ctrl+Shift+V 唤起窗口</span>
+          )}
           {currentPage === 'favorites' && <span>收藏的记录不受过期清理影响</span>}
           {currentPage === 'stickers' && <span>点击贴图即可复制到剪贴板</span>}
           {currentPage === 'settings' && <span>修改设置后自动保存</span>}

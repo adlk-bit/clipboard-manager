@@ -1,20 +1,26 @@
 {
   "name": "clipboard-manager",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Windows 剪贴板历史管理工具",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "test": "tsx --test tests/**/*.test.ts",
     "preview": "electron-vite preview",
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-vite build && electron-builder --win -c.electronDist=node_modules/electron/dist -c.electronVersion=43.1.1"
   },
-  "keywords": ["clipboard", "history", "windows"],
+  "keywords": [
+    "clipboard",
+    "history",
+    "windows"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "fflate": "^0.8.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "sql.js": "^1.14.1",
@@ -23,6 +29,7 @@
   "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/sql.js": "^1.4.9",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.5.4",
     "concurrently": "^10.0.3",
@@ -31,6 +38,7 @@
     "electron-vite": "^3.1.0",
     "postcss": "^8.5.19",
     "tailwindcss": "^3.4.19",
+    "tsx": "^4.20.6",
     "typescript": "^7.0.2",
     "vite": "^5.4.21"
   }

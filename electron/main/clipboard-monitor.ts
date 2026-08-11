@@ -1,24 +1,15 @@
-import { clipboard, nativeImage, app } from 'electron'
+import { clipboard, nativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { createHash } from 'crypto'
+import { MonitorPauseState } from './monitor-state'
 import { getSetting, insertHistory } from './database'
+import { getHistoryImagesDir } from './asset-paths'
 
 let lastTextContent = ''
 let lastImageHash = ''
 let monitorTimer: NodeJS.Timeout | null = null
-let imagesDir: string | null = null
-
-function getImagesDir(): string {
-  if (!imagesDir) {
-    imagesDir = path.join(app.getPath('userData'), 'images')
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true })
-    }
-  }
-  return imagesDir
-}
-
+const pauseState = new MonitorPauseState()
 function hashPng(png: Buffer): string {
   return createHash('sha256').update(png).digest('hex')
 }
@@ -26,12 +17,14 @@ function hashPng(png: Buffer): string {
 function saveImageFile(png: Buffer): string {
   const timestamp = Date.now()
   const filename = `clip_${timestamp}.png`
-  const filepath = path.join(getImagesDir(), filename)
+  const filepath = path.join(getHistoryImagesDir(), filename)
   fs.writeFileSync(filepath, png)
   return filepath
 }
 
 export function checkClipboard(onHistoryChanged?: () => void) {
+  if (!pauseState.canPoll()) return
+
   // Check for image first (clipboard may contain both text and image)
   const image = clipboard.readImage()
   if (!image.isEmpty()) {
@@ -85,6 +78,34 @@ export function stopMonitor() {
   if (monitorTimer) {
     clearInterval(monitorTimer)
     monitorTimer = null
+  }
+}
+
+export function isMonitorPaused(): boolean {
+  return pauseState.isPaused()
+}
+
+export function setMonitorPaused(paused: boolean): void {
+  if (!pauseState.setPaused(paused)) return
+
+  if (!paused) {
+    // Prime the dedup state before polling resumes. Content copied while
+    // paused (for example a password) must never be captured retroactively.
+    try {
+      const image = clipboard.readImage()
+      if (!image.isEmpty()) {
+        lastImageHash = hashPng(image.toPNG())
+        lastTextContent = ''
+      } else {
+        lastImageHash = ''
+        const text = clipboard.readText()
+        lastTextContent = text && text.trim().length > 0
+          ? (text.length > 10000 ? text.slice(0, 10000) + '...' : text)
+          : ''
+      }
+    } catch (error) {
+      console.error('Failed to prime clipboard state on resume:', error)
+    }
   }
 }
 

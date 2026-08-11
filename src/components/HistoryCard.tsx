@@ -45,7 +45,12 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation()
     setCopied(true)
-    await window.api.copyToClipboard(item)
+    const result = await window.api.copyToClipboard(item.id)
+    if (!result.success) {
+      setCopied(false)
+      onCopy('复制失败')
+      return
+    }
     const label = item.type === 'text'
       ? (item.content?.slice(0, 20) + (item.content && item.content.length > 20 ? '...' : '')) || '文字'
       : '图片'
@@ -114,12 +119,12 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
         onClick={handleClick}
         className={`no-drag group relative rounded-[14px] border p-3.5 transition-[border-color,background-color,box-shadow] duration-150 ${
           isSelected
-            ? 'border-[#0a84ff] bg-[#eef7ff] dark:bg-[#0a84ff]/15 ring-2 ring-[#0a84ff]/25 dark:ring-[#0a84ff]/35 shadow-[0_4px_12px_rgba(10,132,255,0.12)]'
+            ? 'border-[#0a84ff] bg-[#eef7ff] dark:bg-[#0a84ff]/[0.15] ring-2 ring-[#0a84ff]/25 dark:ring-[#0a84ff]/[0.35] shadow-[0_4px_12px_rgba(10,132,255,0.12)]'
             : isKeyboardActive
-            ? 'border-[#0a84ff] bg-[#eef7ff] dark:bg-[#0a84ff]/15 ring-2 ring-[#0a84ff]/25 dark:ring-[#0a84ff]/35 shadow-[0_4px_12px_rgba(10,132,255,0.12)]'
+            ? 'border-[#0a84ff] bg-[#eef7ff] dark:bg-[#0a84ff]/[0.15] ring-2 ring-[#0a84ff]/25 dark:ring-[#0a84ff]/[0.35] shadow-[0_4px_12px_rgba(10,132,255,0.12)]'
             : item.is_pinned
-            ? 'border-[#b9dcff] dark:border-[#0a84ff]/35 bg-[#f4faff] dark:bg-[#2c2c2e] shadow-[0_1px_2px_rgba(60,60,67,0.08)]'
-            : 'border-white/80 dark:border-white/10 bg-white/88 dark:bg-[#2c2c2e] shadow-[0_1px_2px_rgba(60,60,67,0.08)] hover:border-[#c6e2ff] dark:hover:border-white/18 hover:shadow-[0_5px_14px_rgba(60,60,67,0.1)]'
+            ? 'border-[#b9dcff] dark:border-[#0a84ff]/[0.35] bg-[#f4faff] dark:bg-[#2c2c2e] shadow-[0_1px_2px_rgba(60,60,67,0.08)]'
+            : 'border-white/80 dark:border-white/10 bg-white/[0.88] dark:bg-[#2c2c2e] shadow-[0_1px_2px_rgba(60,60,67,0.08)] hover:border-[#c6e2ff] dark:hover:border-white/[0.18] hover:shadow-[0_5px_14px_rgba(60,60,67,0.1)]'
         } ${selectionMode ? 'cursor-pointer' : ''}`}
       >
         {/* Selection checkbox */}
