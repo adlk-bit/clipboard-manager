@@ -76,7 +76,7 @@ export const useStore = create<AppState>((set, get) => ({
       get().loadStickers()
     } else if (page === 'settings') {
       get().loadSettings()
-    } else {
+    } else if (page === 'all' || page === 'favorites') {
       if (page !== 'favorites') set({ favoriteFolder: '' })
       get().loadHistory('', page === 'favorites' ? 'favorites' : 'all')
       if (page === 'favorites') get().loadFavoriteFolders()

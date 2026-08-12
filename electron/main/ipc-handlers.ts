@@ -125,6 +125,17 @@ export function registerIpcHandlers(
     return { success: false, error: 'Invalid item' }
   })
 
+  ipcMain.handle('clipboard:writeText', (_event, text: unknown) => {
+    if (typeof text !== 'string' || text.length === 0 || text.length > 10000) {
+      return { success: false, type: 'text', error: 'Invalid text content' }
+    }
+
+    clipboard.writeText(text)
+    return clipboard.readText() === text
+      ? { success: true, type: 'text' }
+      : { success: false, type: 'text', error: 'Write verification failed' }
+  })
+
   ipcMain.handle('favorites:folders', () => getFavoriteFolders())
   ipcMain.handle('favorites:updateMetadata', (_event, id: unknown, folder: unknown, tags: unknown) => {
     if (!validId(id)) return
@@ -251,6 +262,18 @@ export function registerIpcHandlers(
       }
     }
     return { success: false, error: 'Image file not found' }
+  })
+
+  // ---- Emoji ----
+  ipcMain.handle('emoji:send', (_event, emoji: unknown) => {
+    if (typeof emoji !== 'string' || emoji.length === 0 || emoji.length > 32 || /[\u0000-\u001f\u007f]/u.test(emoji)) {
+      return { success: false, error: 'Invalid emoji' }
+    }
+
+    clipboard.writeText(emoji)
+    return clipboard.readText() === emoji
+      ? { success: true }
+      : { success: false, error: 'Write verification failed' }
   })
 
   // ---- Export / Import ----

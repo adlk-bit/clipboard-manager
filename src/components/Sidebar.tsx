@@ -1,11 +1,13 @@
 import { useStore } from '../stores/useStore'
 import type { PageView } from '../types'
+import Icon, { type IconName } from './Icon'
 
-const navItems: { id: PageView; label: string; icon: string }[] = [
-  { id: 'all', label: '全部记录', icon: '📋' },
-  { id: 'favorites', label: '收藏', icon: '⭐' },
-  { id: 'stickers', label: '贴图库', icon: '🖼️' },
-  { id: 'settings', label: '设置', icon: '⚙️' },
+const navItems: { id: PageView; label: string; icon: IconName }[] = [
+  { id: 'all', label: '全部记录', icon: 'clipboard' },
+  { id: 'favorites', label: '收藏', icon: 'star' },
+  { id: 'emoji', label: 'Emoji', icon: 'smile' },
+  { id: 'stickers', label: '贴图库', icon: 'image' },
+  { id: 'settings', label: '设置', icon: 'settings' },
 ]
 
 export default function Sidebar() {
@@ -13,25 +15,22 @@ export default function Sidebar() {
   const setCurrentPage = useStore((s) => s.setCurrentPage)
 
   return (
-    <aside className="app-sidebar w-[76px] shrink-0 bg-white/[0.72] dark:bg-[#2c2c2e]/[0.82] border-r border-white/70 dark:border-white/10 flex flex-col items-center py-4 gap-2 backdrop-blur-xl">
-      {/* App icon */}
-      <div className="w-10 h-10 rounded-[13px] bg-gradient-to-br from-[#0a84ff] to-[#0071e3] flex items-center justify-center text-white text-[17px] font-semibold mb-4 shadow-[0_5px_12px_rgba(0,113,227,0.28)]">
-        C
-      </div>
-
-      {/* Nav items */}
+    <aside className="app-sidebar flex w-[52px] shrink-0 flex-col items-center gap-1 border-r border-[#dedee3] bg-[#f2f2f4] py-2 dark:border-white/10 dark:bg-[#232326]">
       {navItems.map((item) => (
         <button
           key={item.id}
+          type="button"
           onClick={() => setCurrentPage(item.id)}
-          className={`no-drag flex flex-col items-center gap-0.5 w-[60px] py-2 rounded-[12px] transition-[background-color,color,transform] duration-150 active:scale-[0.96] ${
+          aria-label={item.label}
+          title={item.label}
+          className={`no-drag relative flex size-10 items-center justify-center rounded-lg transition-colors duration-100 ${
             currentPage === item.id
-              ? 'bg-white/90 dark:bg-white/[0.12] text-[#007aff] dark:text-[#0a84ff] shadow-[0_1px_2px_rgba(60,60,67,0.08)]'
-              : 'text-[#636366] dark:text-[#98989d] hover:bg-white/[0.65] dark:hover:bg-white/[0.08] hover:text-[#007aff] dark:hover:text-[#0a84ff]'
+              ? 'bg-white text-[#006bd6] shadow-sm dark:bg-white/10 dark:text-[#53a9ff]'
+              : 'text-[#69696f] hover:bg-black/[0.045] hover:text-[#1d1d1f] dark:text-[#a6a6ab] dark:hover:bg-white/[0.07] dark:hover:text-white'
           }`}
         >
-          <span className="text-xl">{item.icon}</span>
-          <span className="text-[10px] font-medium">{item.label}</span>
+          {currentPage === item.id && <span className="absolute -left-1 h-5 w-0.5 rounded-r bg-[#0078d4]" />}
+          <Icon name={item.icon} size={18} />
         </button>
       ))}
     </aside>

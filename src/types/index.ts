@@ -46,7 +46,7 @@ export type BackupImportResult =
       skippedDuplicates: number
     }
 
-export type PageView = 'all' | 'favorites' | 'stickers' | 'settings'
+export type PageView = 'all' | 'favorites' | 'emoji' | 'stickers' | 'settings'
 
 export interface ElectronApi {
   getHistory: (search?: string, filter?: string, folder?: string, sort?: 'recent' | 'frequent') => Promise<HistoryItem[]>
@@ -56,6 +56,7 @@ export interface ElectronApi {
   clearAllHistory: () => Promise<void>
   batchDeleteHistory: (ids: number[]) => Promise<number>
   copyToClipboard: (id: number) => Promise<{ success: boolean; type?: 'text' | 'image'; error?: string }>
+  writeTextToClipboard: (text: string) => Promise<{ success: boolean; type?: 'text'; error?: string }>
   getFavoriteFolders: () => Promise<string[]>
   updateFavoriteMetadata: (id: number, folder: string, tags: string) => Promise<void>
   moveFavorite: (id: number, direction: 'up' | 'down') => Promise<boolean>
@@ -78,6 +79,7 @@ export interface ElectronApi {
   importStickers: () => Promise<StickerItem[]>
   deleteSticker: (id: number) => Promise<StickerItem[]>
   sendSticker: (id: number) => Promise<{ success: boolean; error?: string }>
+  sendEmoji: (emoji: string) => Promise<{ success: boolean; error?: string }>
   exportHistory: () => Promise<BackupExportResult | null>
   importHistory: () => Promise<BackupImportResult>
   getAppVersion: () => Promise<string>

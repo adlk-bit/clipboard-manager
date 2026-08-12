@@ -60,8 +60,8 @@ function registerCustomProtocol() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 420,
-    height: 650,
+    width: 400,
+    height: 600,
     minWidth: 320,
     minHeight: 400,
     frame: false,

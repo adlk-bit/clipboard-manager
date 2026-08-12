@@ -1,6 +1,6 @@
 # 📋 Clipboard Manager — Windows Clipboard History Tool
 
-A lightweight, efficient Windows desktop clipboard manager. Runs silently in the background, auto-saves text and image clipboard entries, and provides real-time search, pin, favorite, batch management, and a sticker library — the missing power tool for your Windows clipboard.
+A lightweight, efficient Windows desktop clipboard manager. Runs silently in the background, auto-saves text and image clipboard entries, and provides real-time search, editable copy, Emoji, pin, favorite, batch management, and a sticker library — the missing power tool for your Windows clipboard.
 
 [中文版](README_CN.md)
 
@@ -17,10 +17,12 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 | 📌 **Organized Favorites** | Pin or favorite important entries, then add folders/tags and reorder favorites |
 | 🔍 **Live Search** | Fuzzy-match text content as you type, lightning fast |
 | 🔗 **Quick-Open URLs** | URL-only clipboard items can be opened safely in the default browser |
+| ✏️ **Edit Before Copy** | Edit any text entry in a focused dialog, then copy the revised content without overwriting the original history item |
+| 😀 **Emoji Picker** | Browse 233 built-in Emoji across seven categories, search in Chinese or English, and quickly reuse recent choices |
 | 🖼️ **Sticker Library** | Import local images as stickers, click to copy to clipboard |
 | ☑️ **Batch Mode** | Select multiple entries for bulk deletion |
 | 🗑️ **Auto-Cleanup** | Choose 1 / 3 / 5 days or forever; expiry follows last use and removes linked image files |
-| 🌙 **Refined Dark Mode** | A unified system-style light/dark interface with reduced-motion and reduced-transparency support |
+| 🌙 **Compact System UI** | A space-efficient light/dark interface with unified SVG icons, clear primary actions, and reduced-motion support |
 | 📤 **Portable Backup & Restore** | `.clipbackup` includes text, images, stickers, favorite metadata, and safe settings; merge/replace restore and legacy JSON import are supported |
 | 🛡️ **Local Data Protection** | Atomic database snapshots, startup integrity repair, restricted local-asset access, CSP, and sandboxed rendering |
 | ⌨️ **Configurable Hotkey** | Record a new global shortcut directly in Settings; `Ctrl+Shift+V` is the default |
@@ -33,7 +35,7 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 
 ### Download Installer
 
-Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download the latest `ClipboardManager Setup x.x.x.exe`. Double-click to install.
+Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download `ClipboardManager-Setup-1.0.6.exe`. Double-click to install.
 
 ### Build from Source
 
@@ -56,17 +58,14 @@ npm run dist
 
 ---
 
-## 🆕 What's New in v1.0.5
+## 🆕 What's New in v1.0.6
 
-- Replaced path-only JSON exports with portable `.clipbackup` archives containing history images, stickers, favorite folders/tags/order, usage metadata, and safe settings.
-- Added validated merge or replace restore, duplicate handling, checksum verification, archive safety limits, and compatibility with legacy JSON backups.
-- “Newest” ordering, capacity cleanup, and expiry now follow the last-used time, so a recently reused deduplicated item stays recent and is not deleted as stale.
-- Expiry cleanup now removes linked image files; startup integrity repair removes missing rows/orphaned managed assets and relocates legacy external image paths into managed storage.
-- Database writes now use a durable temporary file and retain the previous complete snapshot for automatic recovery after an interrupted or corrupt write.
-- Enabled renderer sandboxing and web security, added a Content Security Policy, restricted `local-asset` reads to managed image directories, and changed copy IPC to accept database IDs instead of renderer-provided paths.
-- The Settings footer now reads the version from the running application, and standalone TypeScript checks are supported again.
-- Restored the persistent pause/resume capture control in both the history toolbar and tray, and fixed reliable click-to-record behavior for custom hotkeys.
-- Corrected sidebar, title-bar, and card transparency classes so every surface changes consistently in dark mode.
+- Added an Emoji page to the sidebar with 233 built-in Emoji, seven categories, Chinese/English keyword search, and a local recent-use list.
+- Added a persistent edit button beside Copy on text cards. The edit dialog supports up to 10,000 characters, `Ctrl+Enter` to copy, and `Esc` to close while preserving the original history item.
+- Hardened the new clipboard IPC paths with main-process length/control-character validation and write-back verification.
+- Reworked the window into a denser system-style layout with a slimmer title bar/sidebar, compact cards and controls, and consistent reusable SVG icons.
+- Kept primary Edit and Copy actions visible at all times while secondary card actions remain available on hover or keyboard focus.
+- Extended the Electron runtime smoke test to verify Emoji navigation and reject invalid Emoji or edited-text clipboard payloads.
 
 ---
 
@@ -77,6 +76,7 @@ npm run dist
 | Open window | `Ctrl+Shift+V` or double-click tray icon |
 | Browse history | Sidebar → "All Records" |
 | Copy an item | Click 📋 on any card, or use ↑ / ↓ then Enter |
+| Edit then copy | Click the pencil button beside Copy, edit the text, then choose “Copy edited content” or press `Ctrl+Enter` |
 | Change history order | In All Records, choose “Newest” or “Frequently Used” |
 | Pause/resume capture | In All Records, click “Pause capture”, or use the tray menu |
 | Pin | Hover card → click 📌 |
@@ -86,6 +86,7 @@ npm run dist
 | Delete | Hover card → click 🗑️ |
 | Batch select | Click “Batch manage” below the list to enter multi-select mode |
 | Search | Type in the search bar at top |
+| Emoji | Sidebar → "Emoji" → choose a category or search → click an Emoji to copy |
 | Stickers | Sidebar → "Stickers" → Import → click image to copy |
 | Settings | Sidebar → "Settings" → retention / appearance / custom hotkey / storage limits |
 | Backup | Settings → Complete Backup / Restore Backup, then choose merge or replace |
@@ -110,9 +111,12 @@ clipboard-manager/
 │   ├── App.tsx
 │   ├── components/
 │   │   ├── Layout.tsx             # Shell layout
-│   │   ├── Sidebar.tsx            # Nav (All / Favorites / Stickers / Settings)
+│   │   ├── Sidebar.tsx            # Nav (All / Favorites / Emoji / Stickers / Settings)
 │   │   ├── HistoryList.tsx        # History list
-│   │   ├── HistoryCard.tsx        # Card (copy / pin / fav / delete)
+│   │   ├── HistoryCard.tsx        # Card (edit / copy / pin / fav / delete)
+│   │   ├── EditCopyDialog.tsx     # Edit-before-copy dialog
+│   │   ├── EmojiPicker.tsx        # Searchable categorized Emoji picker
+│   │   ├── Icon.tsx               # Shared SVG icon set
 │   │   ├── SearchBar.tsx          # Search input
 │   │   ├── StickerGrid.tsx        # Sticker grid
 │   │   ├── StickerCard.tsx        # Sticker card
@@ -121,6 +125,7 @@ clipboard-manager/
 │   │   ├── ConfirmDialog.tsx      # Confirm dialog
 │   │   └── Toast.tsx              # Toast notification
 │   ├── stores/useStore.ts         # Zustand state
+│   ├── data/emojis.ts             # Built-in Emoji catalog and keywords
 │   ├── types/index.ts             # TypeScript types
 │   └── styles/index.css           # Tailwind + global styles
 ├── resources/                     # Static assets

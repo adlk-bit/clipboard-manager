@@ -10,6 +10,7 @@ const api = {
   clearAllHistory: () => ipcRenderer.invoke('history:clearAll'),
   batchDeleteHistory: (ids: number[]) => ipcRenderer.invoke('history:batchDelete', ids),
   copyToClipboard: (id: number) => ipcRenderer.invoke('history:copyToClipboard', id),
+  writeTextToClipboard: (text: string) => ipcRenderer.invoke('clipboard:writeText', text),
   getFavoriteFolders: () => ipcRenderer.invoke('favorites:folders'),
   updateFavoriteMetadata: (id: number, folder: string, tags: string) => ipcRenderer.invoke('favorites:updateMetadata', id, folder, tags),
   moveFavorite: (id: number, direction: 'up' | 'down') => ipcRenderer.invoke('favorites:move', id, direction),
@@ -50,6 +51,9 @@ const api = {
   importStickers: () => ipcRenderer.invoke('stickers:import'),
   deleteSticker: (id: number) => ipcRenderer.invoke('stickers:delete', id),
   sendSticker: (id: number) => ipcRenderer.invoke('stickers:send', id),
+
+  // Emoji
+  sendEmoji: (emoji: string) => ipcRenderer.invoke('emoji:send', emoji),
 
   // Export/Import
   exportHistory: () => ipcRenderer.invoke('history:export'),

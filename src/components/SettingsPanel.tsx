@@ -75,18 +75,20 @@ export default function SettingsPanel() {
   }
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="space-y-3 p-3">
       <div>
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">存储期限</h3>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">超过期限的记录将自动清理（置顶和收藏记录不受影响）</p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="mb-1.5 flex items-baseline justify-between gap-2">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-200">存储期限</h3>
+          <span className="truncate text-[10px] text-gray-400 dark:text-gray-500">置顶和收藏不会清理</span>
+        </div>
+        <div className="grid grid-cols-4 gap-1.5 rounded-lg border border-[#e2e2e6] bg-white p-1.5 dark:border-white/[0.08] dark:bg-[#28282b]">
           {[
             { value: '1', label: '1 天' },
             { value: '3', label: '3 天' },
             { value: '5', label: '5 天' },
             { value: '0', label: '永久' },
           ].map((opt) => (
-            <button key={opt.value} onClick={() => handleRetentionChange(opt.value)} className={`no-drag py-2 px-3 rounded-[10px] text-xs font-medium transition-[background-color,color,transform,box-shadow] duration-150 active:scale-[0.97] ${retentionDays === opt.value ? 'bg-[#007aff] text-white shadow-[0_3px_8px_rgba(0,122,255,0.22)]' : 'bg-white/[0.85] dark:bg-[#2c2c2e] text-[#48484a] dark:text-[#d1d1d6] shadow-[0_1px_2px_rgba(60,60,67,0.08)] hover:bg-[#eaf4ff] dark:hover:bg-white/10 hover:text-[#007aff]'}`}>
+            <button key={opt.value} onClick={() => handleRetentionChange(opt.value)} className={`no-drag h-7 rounded-md text-[11px] font-medium transition-colors ${retentionDays === opt.value ? 'bg-[#0078d4] text-white' : 'text-[#55555a] hover:bg-[#edf6ff] hover:text-[#006bd6] dark:text-[#d1d1d6] dark:hover:bg-white/[0.07] dark:hover:text-[#53a9ff]'}`}>
               {opt.label}
             </button>
           ))}
@@ -96,37 +98,37 @@ export default function SettingsPanel() {
       <SettingToggle sectionTitle="外观" title="深色模式" description="切换为深色界面主题" enabled={darkMode} onChange={handleDarkModeChange} />
 
       <div>
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">快捷键</h3>
-        <div className="py-3 px-4 rounded-[14px] bg-white/80 dark:bg-[#2c2c2e] border border-white/80 dark:border-white/10 shadow-[0_1px_2px_rgba(60,60,67,0.08)]">
+        <h3 className="mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200">快捷键</h3>
+        <div className="rounded-lg border border-[#e2e2e6] bg-white p-2.5 dark:border-white/[0.08] dark:bg-[#28282b]">
           <button
             type="button"
             onClick={() => { setIsRecordingHotkey(true); setHotkeyMessage('正在录入，请按下新的组合键。') }}
             onBlur={() => setIsRecordingHotkey(false)}
             onKeyDown={handleHotkeyKeyDown}
             aria-pressed={isRecordingHotkey}
-            className={`no-drag w-full cursor-pointer rounded-lg border bg-white px-3 py-2 text-left text-sm font-mono text-gray-700 outline-none transition-colors focus:ring-2 focus:ring-primary-100 dark:bg-gray-700 dark:text-gray-200 dark:focus:ring-primary-900/40 ${isRecordingHotkey ? 'border-primary-400 ring-2 ring-primary-100 dark:border-primary-500 dark:ring-primary-900/40' : 'border-gray-200 dark:border-gray-600'}`}
+            className={`no-drag h-8 w-full cursor-pointer rounded-md border bg-[#fafafa] px-2.5 text-left font-mono text-xs text-gray-700 outline-none transition-colors dark:bg-gray-700 dark:text-gray-200 ${isRecordingHotkey ? 'border-primary-400 ring-1 ring-primary-200 dark:border-primary-500 dark:ring-primary-900/50' : 'border-gray-200 dark:border-gray-600'}`}
             aria-label="全局快捷键"
           >
             {isRecordingHotkey ? '请按下组合键…' : hotkey}
           </button>
-          <p className="mt-2 text-[10px] text-gray-500 dark:text-gray-400">{hotkeyMessage}</p>
+          <p className="mt-1.5 text-[10px] leading-4 text-gray-500 dark:text-gray-400">{hotkeyMessage}</p>
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">历史容量</h3>
-        <div className="rounded-[14px] bg-white/80 p-3 dark:bg-[#2c2c2e] border border-white/80 dark:border-white/10 shadow-[0_1px_2px_rgba(60,60,67,0.08)]">
-          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">当前 {historyStats.itemCount} 条记录，图片占用 {formatBytes(historyStats.imageBytes)}。达到条目上限时，最旧的非置顶、非收藏记录会自动清理。</p>
-          <p className="mb-1.5 text-[10px] text-gray-400 dark:text-gray-500">最大条目数</p>
+        <h3 className="mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200">历史容量</h3>
+        <div className="rounded-lg border border-[#e2e2e6] bg-white p-2.5 dark:border-white/[0.08] dark:bg-[#28282b]">
+          <p className="mb-2 text-[11px] text-gray-500 dark:text-gray-400">当前 {historyStats.itemCount} 条，图片 {formatBytes(historyStats.imageBytes)}</p>
+          <p className="mb-1 text-[10px] text-gray-400 dark:text-gray-500">最大条目数</p>
           <div className="grid grid-cols-4 gap-1.5">
             {['100', '300', '500', '1000'].map((value) => (
-              <button key={value} onClick={() => handleMaxHistoryItemsChange(value)} className={`no-drag rounded-md py-1.5 text-xs ${maxHistoryItems === value ? 'bg-primary-500 text-white' : 'bg-white text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>{value}</button>
+              <button key={value} onClick={() => handleMaxHistoryItemsChange(value)} className={`no-drag h-7 rounded-md text-[11px] ${maxHistoryItems === value ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>{value}</button>
             ))}
           </div>
-          <p className="mb-1.5 mt-3 text-[10px] text-gray-400 dark:text-gray-500">单张图片最大大小</p>
+          <p className="mb-1 mt-2 text-[10px] text-gray-400 dark:text-gray-500">单张图片上限</p>
           <div className="grid grid-cols-4 gap-1.5">
             {['1', '5', '10', '20'].map((value) => (
-              <button key={value} onClick={() => handleMaxImageSizeChange(value)} className={`no-drag rounded-md py-1.5 text-xs ${maxImageSizeMb === value ? 'bg-primary-500 text-white' : 'bg-white text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>{value} MB</button>
+              <button key={value} onClick={() => handleMaxImageSizeChange(value)} className={`no-drag h-7 rounded-md text-[11px] ${maxImageSizeMb === value ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>{value} MB</button>
             ))}
           </div>
         </div>
@@ -134,7 +136,7 @@ export default function SettingsPanel() {
 
       <ExportImport />
 
-      <div className="pt-2 text-center">
+      <div className="pt-0.5 text-center">
         <p className="text-[10px] text-gray-300 dark:text-gray-600">剪贴板管理器{appVersion ? ` v${appVersion}` : ''}</p>
       </div>
     </div>
@@ -150,16 +152,16 @@ function formatBytes(bytes: number): string {
 function SettingToggle({ sectionTitle, title, description, enabled, onChange }: { sectionTitle: string; title: string; description: string; enabled: boolean; onChange: (value: boolean) => void }) {
   return (
     <div>
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{sectionTitle}</h3>
-      <label className="flex items-center justify-between py-3 px-4 rounded-[14px] bg-white/80 dark:bg-[#2c2c2e] border border-white/80 dark:border-white/10 shadow-[0_1px_2px_rgba(60,60,67,0.08)] cursor-pointer hover:bg-white dark:hover:bg-white/10 transition-colors">
+      <h3 className="mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200">{sectionTitle}</h3>
+      <div className="flex items-center justify-between rounded-lg border border-[#e2e2e6] bg-white px-2.5 py-2 dark:border-white/[0.08] dark:bg-[#28282b]">
         <div>
-          <p className="text-sm text-gray-700 dark:text-gray-200">{title}</p>
+          <p className="text-xs text-gray-700 dark:text-gray-200">{title}</p>
           <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{description}</p>
         </div>
-        <button onClick={() => onChange(!enabled)} className={`no-drag relative w-11 h-6 rounded-full transition-colors duration-200 ${enabled ? 'bg-[#34c759]' : 'bg-[#c7c7cc] dark:bg-[#636366]'}`}>
-          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform duration-200 ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        <button type="button" role="switch" aria-checked={enabled} onClick={() => onChange(!enabled)} className={`no-drag relative h-5 w-9 rounded-full transition-colors duration-150 ${enabled ? 'bg-[#34a853]' : 'bg-[#c7c7cc] dark:bg-[#636366]'}`}>
+          <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform duration-150 ${enabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
         </button>
-      </label>
+      </div>
     </div>
   )
 }

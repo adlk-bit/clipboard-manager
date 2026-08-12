@@ -16,7 +16,7 @@ export default function Layout({ children }: LayoutProps) {
   }, [darkMode])
 
   return (
-    <div className="flex h-screen flex-col bg-[#f2f2f7] dark:bg-[#1c1c1e]">
+    <div className="flex h-screen flex-col bg-[#f2f2f4] dark:bg-[#1c1c1e]">
       <WindowTitleBar />
       <div className="flex min-h-0 flex-1">
         {children}

@@ -1,4 +1,5 @@
 import { useStore } from '../stores/useStore'
+import Icon from './Icon'
 
 interface ConfirmDialogProps {
   type: 'delete' | 'clearAll' | 'batchDelete'
@@ -41,19 +42,21 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
   }
 
   return (
-    <div className="absolute inset-0 bg-black/25 dark:bg-black/[0.55] flex items-center justify-center z-50" onClick={handleCancel}>
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/35 dark:bg-black/60" onClick={handleCancel}>
       <div
-        className="no-drag bg-white/95 dark:bg-[#2c2c2e]/95 rounded-[18px] p-5 mx-4 shadow-[0_18px_42px_rgba(0,0,0,0.24)] border border-white/80 dark:border-white/10 max-w-xs w-full backdrop-blur-xl"
+        role="dialog"
+        aria-modal="true"
+        className="no-drag mx-4 w-full max-w-[280px] rounded-xl border border-[#dedee3] bg-white p-4 shadow-xl dark:border-white/10 dark:bg-[#2c2c2f]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-center mb-4">
-          <span className="text-3xl">
-            {type === 'delete' ? '🗑️' : type === 'batchDelete' ? '🗑️' : '⚠️'}
-          </span>
-          <h3 className="text-sm font-medium text-gray-800 dark:text-gray-100 mt-2">
+        <div className="mb-4 text-center">
+          <div className="mx-auto mb-2 flex size-9 items-center justify-center rounded-full bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400">
+            <Icon name={type === 'clearAll' ? 'warning' : 'trash'} size={18} />
+          </div>
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
             {type === 'delete' ? '确认删除这条记录？' : type === 'batchDelete' ? `确认删除 ${selectedIds.size} 条记录？` : '确认清空全部记录？'}
           </h3>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <p className="mt-1 text-[11px] leading-4 text-gray-400 dark:text-gray-500">
             {type === 'delete'
               ? '删除后无法恢复'
               : type === 'batchDelete'
@@ -65,13 +68,13 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
         <div className="flex gap-2">
           <button
             onClick={handleCancel}
-            className="flex-1 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            className="h-8 flex-1 rounded-md bg-gray-100 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
           >
             取消
           </button>
           <button
             onClick={handleConfirm}
-            className="flex-1 py-2 rounded-lg text-white text-sm font-medium bg-red-500 hover:bg-red-600 transition-colors"
+            className="h-8 flex-1 rounded-md bg-red-500 text-xs font-medium text-white transition-colors hover:bg-red-600"
           >
             {type === 'delete' ? '删除' : type === 'batchDelete' ? '删除' : '清空全部'}
           </button>

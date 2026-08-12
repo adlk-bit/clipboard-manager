@@ -4,10 +4,13 @@ import Sidebar from './components/Sidebar'
 import HistoryList from './components/HistoryList'
 import SearchBar from './components/SearchBar'
 import StickerGrid from './components/StickerGrid'
+import EmojiPicker from './components/EmojiPicker'
 import SettingsPanel from './components/SettingsPanel'
 import ConfirmDialog from './components/ConfirmDialog'
+import EditCopyDialog from './components/EditCopyDialog'
 import Toast from './components/Toast'
 import { useStore } from './stores/useStore'
+import type { HistoryItem } from './types'
 
 export default function App() {
   const currentPage = useStore((s) => s.currentPage)
@@ -16,17 +19,16 @@ export default function App() {
   const confirmDeleteId = useStore((s) => s.confirmDeleteId)
   const confirmClearAll = useStore((s) => s.confirmClearAll)
   const confirmBatchDelete = useStore((s) => s.confirmBatchDelete)
-  const darkMode = useStore((s) => s.darkMode)
   const historyItems = useStore((s) => s.historyItems)
   const selectionMode = useStore((s) => s.selectionMode)
   const keyboardActiveId = useStore((s) => s.keyboardActiveId)
   const setKeyboardActiveId = useStore((s) => s.setKeyboardActiveId)
-  const monitorPaused = useStore((s) => s.monitorPaused)
   const loadMonitorPaused = useStore((s) => s.loadMonitorPaused)
   const setMonitorPaused = useStore((s) => s.setMonitorPaused)
 
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'info' } | null>(null)
   const [toastKey, setToastKey] = useState(0)
+  const [editCopyItem, setEditCopyItem] = useState<HistoryItem | null>(null)
 
   const showToast = useCallback((message: string, type: 'success' | 'info' = 'success') => {
     setToastKey(k => k + 1)
@@ -98,12 +100,13 @@ export default function App() {
     <Layout>
       <Sidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 bg-[#f7f7f8] dark:bg-[#1c1c1e]">
+      <div className="flex min-w-0 flex-1 flex-col bg-[#f7f7f8] dark:bg-[#1c1c1e]">
         {/* Header */}
-        <div className="app-header drag-region flex items-center justify-between px-5 py-3 bg-white/[0.72] dark:bg-[#2c2c2e]/[0.82] border-b border-white/70 dark:border-white/10 backdrop-blur-xl shrink-0">
-          <h1 className="text-[15px] leading-5 font-semibold tracking-[-0.01em] text-[#1d1d1f] dark:text-[#f5f5f7] no-drag">
+        <div className="app-header drag-region flex h-11 shrink-0 items-center justify-between gap-2 border-b border-[#e2e2e6] bg-white px-3 dark:border-white/10 dark:bg-[#242427]">
+          <h1 className="no-drag truncate text-sm font-semibold text-[#242428] dark:text-[#f5f5f7]">
             {currentPage === 'all' && '剪贴板历史'}
             {currentPage === 'favorites' && '收藏记录'}
+            {currentPage === 'emoji' && 'Emoji'}
             {currentPage === 'stickers' && '贴图库'}
             {currentPage === 'settings' && '设置'}
           </h1>
@@ -116,20 +119,12 @@ export default function App() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList onCopy={showToast} />}
+          {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList onCopy={showToast} onEdit={setEditCopyItem} />}
+          {currentPage === 'emoji' && <EmojiPicker onCopy={showToast} />}
           {currentPage === 'stickers' && <StickerGrid onCopy={showToast} />}
           {currentPage === 'settings' && <SettingsPanel />}
         </div>
 
-        {/* Status bar */}
-        <div className="app-statusbar px-5 py-2 border-t border-white/70 dark:border-white/10 bg-white/60 dark:bg-[#2c2c2e]/70 text-[11px] leading-4 text-[#6e6e73] dark:text-[#98989d] backdrop-blur-xl shrink-0">
-          {currentPage === 'all' && (
-            <span>{monitorPaused ? '记录已暂停' : '自动记录中'} · 点击卡片右侧 📋 图标复制 · 按 Ctrl+Shift+V 唤起窗口</span>
-          )}
-          {currentPage === 'favorites' && <span>收藏的记录不受过期清理影响</span>}
-          {currentPage === 'stickers' && <span>点击贴图即可复制到剪贴板</span>}
-          {currentPage === 'settings' && <span>修改设置后自动保存</span>}
-        </div>
       </div>
 
       {/* Toast notification */}
@@ -139,6 +134,14 @@ export default function App() {
       {confirmDeleteId !== null && <ConfirmDialog type="delete" />}
       {confirmClearAll && <ConfirmDialog type="clearAll" />}
       {confirmBatchDelete && <ConfirmDialog type="batchDelete" />}
+      {editCopyItem && (
+        <EditCopyDialog
+          key={editCopyItem.id}
+          item={editCopyItem}
+          onClose={() => setEditCopyItem(null)}
+          onCopied={showToast}
+        />
+      )}
     </Layout>
   )
 }

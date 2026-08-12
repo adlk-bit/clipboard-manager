@@ -2,13 +2,17 @@ import { useEffect, useRef, useState, memo } from 'react'
 import type { HistoryItem } from '../types'
 import { useStore } from '../stores/useStore'
 import { normalizeHttpUrl } from '../../shared/url'
+import Icon from './Icon'
 
 interface HistoryCardProps {
   item: HistoryItem
   onCopy: (msg: string) => void
+  onEdit: (item: HistoryItem) => void
 }
 
-const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps) {
+const actionButtonClass = 'flex size-6 items-center justify-center rounded text-[#8a8a90] transition-colors hover:bg-black/[0.05] hover:text-[#3a3a3c] focus-visible:opacity-100 dark:text-[#96969c] dark:hover:bg-white/[0.08] dark:hover:text-white'
+
+const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryCardProps) {
   const [copied, setCopied] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState(false)
   const [choosingFolder, setChoosingFolder] = useState(false)
@@ -117,44 +121,42 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
     <div ref={cardRef} className="history-card">
       <div
         onClick={handleClick}
-        className={`no-drag group relative rounded-[14px] border p-3.5 transition-[border-color,background-color,box-shadow] duration-150 ${
+        className={`no-drag group relative rounded-lg border px-2.5 py-2 transition-colors duration-100 ${
           isSelected
-            ? 'border-[#0a84ff] bg-[#eef7ff] dark:bg-[#0a84ff]/[0.15] ring-2 ring-[#0a84ff]/25 dark:ring-[#0a84ff]/[0.35] shadow-[0_4px_12px_rgba(10,132,255,0.12)]'
+            ? 'border-[#1683d8] bg-[#edf6ff] ring-1 ring-[#1683d8]/20 dark:bg-[#0a84ff]/[0.12] dark:ring-[#0a84ff]/25'
             : isKeyboardActive
-            ? 'border-[#0a84ff] bg-[#eef7ff] dark:bg-[#0a84ff]/[0.15] ring-2 ring-[#0a84ff]/25 dark:ring-[#0a84ff]/[0.35] shadow-[0_4px_12px_rgba(10,132,255,0.12)]'
+            ? 'border-[#1683d8] bg-[#edf6ff] ring-1 ring-[#1683d8]/20 dark:bg-[#0a84ff]/[0.12] dark:ring-[#0a84ff]/25'
             : item.is_pinned
-            ? 'border-[#b9dcff] dark:border-[#0a84ff]/[0.35] bg-[#f4faff] dark:bg-[#2c2c2e] shadow-[0_1px_2px_rgba(60,60,67,0.08)]'
-            : 'border-white/80 dark:border-white/10 bg-white/[0.88] dark:bg-[#2c2c2e] shadow-[0_1px_2px_rgba(60,60,67,0.08)] hover:border-[#c6e2ff] dark:hover:border-white/[0.18] hover:shadow-[0_5px_14px_rgba(60,60,67,0.1)]'
+            ? 'border-[#bad9f4] bg-[#f5faff] dark:border-[#0a84ff]/30 dark:bg-[#28282b]'
+            : 'border-[#e2e2e6] bg-white hover:border-[#b9d8f3] dark:border-white/[0.08] dark:bg-[#28282b] dark:hover:border-white/[0.16]'
         } ${selectionMode ? 'cursor-pointer' : ''}`}
       >
         {/* Selection checkbox */}
         {selectionMode && (
-          <div className="absolute top-2 left-2 z-10">
+          <div className="absolute left-2 top-2 z-10">
             <div
-              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+              className={`flex size-4 items-center justify-center rounded border transition-colors ${
                 isSelected
-                  ? 'bg-primary-500 border-primary-500'
+                  ? 'border-primary-500 bg-primary-500'
                   : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-500'
               }`}
             >
               {isSelected && (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+                <Icon name="check" size={11} className="text-white" strokeWidth={3} />
               )}
             </div>
           </div>
         )}
 
         {/* Content area */}
-        <div className={`min-w-0 pr-8 ${selectionMode ? 'ml-7' : ''}`}>
+        <div className={`min-w-0 ${item.type === 'text' && item.content ? 'pr-16' : 'pr-7'} ${selectionMode ? 'ml-6' : ''}`}>
           {item.type === 'text' ? (
-            <p className="text-sm leading-5 text-[#3a3a3c] dark:text-[#e5e5ea] line-clamp-3 whitespace-pre-wrap break-words select-text">
+            <p className="line-clamp-2 select-text whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#3a3a3c] dark:text-[#e5e5ea]">
               {item.content}
             </p>
           ) : item.image_path ? (
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0 border border-gray-200 dark:border-gray-600">
+            <div className="flex items-center gap-2.5">
+              <div className="size-11 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-100 dark:border-gray-600 dark:bg-gray-700">
                 <img
                   src={imageUrl}
                   alt=""
@@ -165,7 +167,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
                 />
               </div>
               <div>
-                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">图片</span>
+                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700 dark:text-gray-400">图片</span>
               </div>
             </div>
           ) : (
@@ -173,7 +175,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
           )}
 
           {currentPage === 'favorites' && item.type === 'text' && (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1">
               {item.favorite_folder && <span className="rounded bg-primary-50 px-1.5 py-0.5 text-[10px] text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">{item.favorite_folder}</span>}
               {item.favorite_tags.split(',').map((tag) => tag.trim()).filter(Boolean).map((tag) => (
                 <span key={tag} className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700 dark:text-gray-300">#{tag}</span>
@@ -182,14 +184,14 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
           )}
 
           {currentPage === 'all' && item.use_count > 1 && (
-            <div className="mt-2 text-[10px] text-gray-400 dark:text-gray-500">
+            <div className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
               已使用 {item.use_count} 次
             </div>
           )}
         </div>
 
         {currentPage === 'favorites' && editingFavorite && !selectionMode && (
-          <div className="mt-3 space-y-2 rounded-lg bg-gray-50 p-2 dark:bg-gray-700/50" onClick={(e) => e.stopPropagation()}>
+          <div className="mt-2 space-y-1.5 rounded-md bg-gray-50 p-2 dark:bg-gray-700/50" onClick={(e) => e.stopPropagation()}>
             <input value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="文件夹，例如：工作" className="no-drag w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-primary-400 dark:border-gray-600 dark:bg-gray-700" />
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="标签，用逗号分隔" className="no-drag w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-primary-400 dark:border-gray-600 dark:bg-gray-700" />
             <div className="flex justify-end gap-2">
@@ -200,7 +202,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
         )}
 
         {currentPage === 'favorites' && choosingFolder && !selectionMode && (
-          <div className="mt-3 rounded-lg bg-gray-50 p-2 dark:bg-gray-700/50" onClick={(e) => e.stopPropagation()}>
+          <div className="mt-2 rounded-md bg-gray-50 p-2 dark:bg-gray-700/50" onClick={(e) => e.stopPropagation()}>
             <p className="mb-1.5 text-[10px] text-gray-500 dark:text-gray-400">选择已有文件夹</p>
             {favoriteFolders.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
@@ -217,94 +219,102 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy }: HistoryCardProps
           </div>
         )}
 
-        {/* Copy button - always visible (hidden in selection mode) */}
+        {/* Primary actions - always visible (hidden in selection mode) */}
         {!selectionMode && (
-          <button
-            onClick={handleCopy}
-            className={`absolute top-2.5 right-2.5 p-1.5 rounded-[9px] transition-[background-color,color,transform] duration-150 active:scale-95 ${
-              copied
-                ? 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 scale-110'
-                : 'bg-[#f2f2f7] dark:bg-white/10 text-[#8e8e93] dark:text-[#98989d] hover:bg-[#e8f3ff] dark:hover:bg-[#0a84ff]/20 hover:text-[#007aff] dark:hover:text-[#0a84ff]'
-            }`}
-            title="复制到剪贴板"
-          >
-            {copied ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
+          <div className="absolute right-2 top-2 flex items-center gap-1">
+            {item.type === 'text' && item.content && (
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); onEdit(item) }}
+                aria-label="编辑后复制"
+                title="编辑后复制"
+                className="flex size-7 items-center justify-center rounded-md bg-[#f1f1f3] text-[#77777d] transition-colors duration-100 hover:bg-[#e4f1fc] hover:text-[#006bd6] dark:bg-white/[0.07] dark:text-[#aaaab0] dark:hover:bg-[#0a84ff]/20 dark:hover:text-[#53a9ff]"
+              >
+                <Icon name="edit" size={14} />
+              </button>
             )}
-          </button>
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label="复制到剪贴板"
+              className={`flex size-7 items-center justify-center rounded-md transition-colors duration-100 ${
+                copied
+                  ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
+                  : 'bg-[#f1f1f3] text-[#77777d] hover:bg-[#e4f1fc] hover:text-[#006bd6] dark:bg-white/[0.07] dark:text-[#aaaab0] dark:hover:bg-[#0a84ff]/20 dark:hover:text-[#53a9ff]'
+              }`}
+              title="复制到剪贴板"
+            >
+              <Icon name={copied ? 'check' : 'copy'} size={14} strokeWidth={copied ? 2.5 : 1.8} />
+            </button>
+          </div>
         )}
 
         {/* Meta bar */}
-        <div className="flex items-center justify-between mt-2.5 gap-2">
-          <span className="text-[10px] tracking-[0.01em] text-[#8e8e93] dark:text-[#98989d] shrink-0">{timeStr}</span>
+        <div className="mt-1.5 flex min-h-6 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            {item.is_pinned === 1 && !selectionMode && (
+              <span className="flex items-center gap-0.5 text-[10px] text-primary-500 dark:text-primary-400">
+                <Icon name="pin" size={11} />
+                置顶
+              </span>
+            )}
+            <span className="shrink-0 text-[10px] tracking-[0.01em] text-[#8e8e93] dark:text-[#98989d]">{timeStr}</span>
+          </div>
 
           {!selectionMode && (
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               {openableUrl && (
                 <button
                   onClick={handleOpenUrl}
-                  className="p-1 rounded-md text-gray-400 dark:text-gray-500 hover:text-primary-500 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                  className={actionButtonClass}
                   title="在浏览器中打开链接"
                   aria-label="在浏览器中打开链接"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 13a5 5 0 0 0 7.07.07l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.07-.07l-3 3A5 5 0 0 0 11 21l1.71-1.71" />
-                  </svg>
+                  <Icon name="link" size={14} />
                 </button>
               )}
               {currentPage === 'favorites' && (
                 <>
-                  <button onClick={(e) => { e.stopPropagation(); setEditingFavorite(!editingFavorite) }} className="p-1 rounded-md text-xs text-gray-400 hover:bg-primary-50 hover:text-primary-500" title="编辑文件夹和标签">🏷️</button>
-                  <button onClick={(e) => { e.stopPropagation(); setChoosingFolder(!choosingFolder) }} className="p-1 rounded-md text-xs text-gray-400 hover:bg-primary-50 hover:text-primary-500" title="归入已有文件夹">📁</button>
-                  <button onClick={(e) => handleMoveFavorite(e, 'up')} className="p-1 rounded-md text-xs text-gray-400 hover:bg-primary-50 hover:text-primary-500" title="上移">↑</button>
-                  <button onClick={(e) => handleMoveFavorite(e, 'down')} className="p-1 rounded-md text-xs text-gray-400 hover:bg-primary-50 hover:text-primary-500" title="下移">↓</button>
+                  <button onClick={(e) => { e.stopPropagation(); setEditingFavorite(!editingFavorite) }} className={actionButtonClass} title="编辑文件夹和标签" aria-label="编辑文件夹和标签"><Icon name="tag" size={14} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); setChoosingFolder(!choosingFolder) }} className={actionButtonClass} title="归入已有文件夹" aria-label="归入已有文件夹"><Icon name="folder" size={14} /></button>
+                  <button onClick={(e) => handleMoveFavorite(e, 'up')} className={actionButtonClass} title="上移" aria-label="上移"><Icon name="chevron-up" size={14} /></button>
+                  <button onClick={(e) => handleMoveFavorite(e, 'down')} className={actionButtonClass} title="下移" aria-label="下移"><Icon name="chevron-down" size={14} /></button>
                 </>
               )}
               <button
                 onClick={handleTogglePin}
-                className={`p-1 rounded-md text-xs transition-colors ${
-                  item.is_pinned ? 'text-primary-500 dark:text-primary-400 bg-primary-100 dark:bg-primary-900/30' : 'text-gray-400 dark:text-gray-500 hover:text-primary-500 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+                aria-label={item.is_pinned ? '取消置顶' : '置顶'}
+                className={`flex size-6 items-center justify-center rounded transition-colors ${
+                  item.is_pinned ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' : actionButtonClass
                 }`}
                 title={item.is_pinned ? '取消置顶' : '置顶'}
               >
-                📌
+                <Icon name="pin" size={14} />
               </button>
 
               <button
                 onClick={handleToggleFavorite}
-                className={`p-1 rounded-md text-xs transition-colors ${
-                  item.is_favorite ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'text-gray-400 dark:text-gray-500 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/10'
+                aria-label={item.is_favorite ? '取消收藏' : '收藏'}
+                className={`flex size-6 items-center justify-center rounded transition-colors ${
+                  item.is_favorite ? 'bg-amber-50 text-amber-500 dark:bg-amber-900/20' : actionButtonClass
                 }`}
                 title={item.is_favorite ? '取消收藏' : '收藏'}
               >
-                ⭐
+                <Icon name="star" size={14} fill={item.is_favorite ? 'currentColor' : 'none'} />
               </button>
 
               <button
                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(item.id) }}
-                className="p-1 rounded-md text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                className={`${actionButtonClass} hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400`}
                 title="删除"
+                aria-label="删除"
               >
-                🗑️
+                <Icon name="trash" size={14} />
               </button>
             </div>
           )}
         </div>
 
-        {/* Pinned indicator */}
-        {item.is_pinned === 1 && !selectionMode && (
-          <div className="absolute top-2 left-2">
-            <span className="text-[10px] text-primary-400 dark:text-primary-500">📌 置顶</span>
-          </div>
-        )}
       </div>
     </div>
   )

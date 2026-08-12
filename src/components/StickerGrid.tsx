@@ -1,5 +1,6 @@
 import { useStore } from '../stores/useStore'
 import StickerCard from './StickerCard'
+import Icon from './Icon'
 
 interface StickerGridProps {
   onCopy: (msg: string) => void
@@ -15,19 +16,22 @@ export default function StickerGrid({ onCopy }: StickerGridProps) {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-2.5">
       <button
         onClick={handleImport}
-        className="no-drag w-full mb-4 py-3 px-4 rounded-xl border-2 border-dashed border-primary-300 dark:border-primary-700 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 hover:border-primary-400 dark:hover:border-primary-600 transition-all text-sm font-medium"
+        className="no-drag mb-2.5 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary-300 bg-primary-50 px-3 text-xs font-medium text-primary-600 transition-colors hover:border-primary-400 hover:bg-primary-100 dark:border-primary-700 dark:bg-primary-900/20 dark:text-primary-400 dark:hover:border-primary-600 dark:hover:bg-primary-900/30"
       >
-        + 导入贴图
+        <Icon name="plus" size={14} />
+        导入贴图
       </button>
 
       {stickers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 py-16">
-          <span className="text-5xl mb-3">🖼️</span>
-          <p className="text-sm">还没有贴图</p>
-          <p className="text-xs mt-1">点击上方按钮从本地导入图片</p>
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
+          <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-black/[0.04] dark:bg-white/[0.06]">
+            <Icon name="image" size={20} />
+          </div>
+          <p className="text-xs font-medium">还没有贴图</p>
+          <p className="mt-1 text-[11px]">从本地导入图片后可快速复制</p>
         </div>
       ) : (
         <div className="sticker-grid">
