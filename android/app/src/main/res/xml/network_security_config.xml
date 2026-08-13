@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- The desktop bridge uses a dynamic RFC1918 address. Application code
+         rejects non-private IPv4 hosts before any connection is opened. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

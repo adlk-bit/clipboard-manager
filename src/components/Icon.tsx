@@ -7,6 +7,7 @@ export type IconName =
   | 'clipboard'
   | 'copy'
   | 'download'
+  | 'devices'
   | 'edit'
   | 'folder'
   | 'image'
@@ -48,6 +49,8 @@ export default function Icon({ name, size = 16, ...props }: IconProps) {
         return <><rect x="8" y="8" width="11" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2" /></>
       case 'download':
         return <><path d="M12 3v11m0 0 4-4m-4 4-4-4" /><path d="M5 19h14" /></>
+      case 'devices':
+        return <><rect x="7" y="2.5" width="10" height="19" rx="2" /><path d="M10 5h4M11 18.5h2" /><path d="M4 8H2.5v8H4M20 8h1.5v8H20" /></>
       case 'edit':
         return <><path d="M4 20h4l11-11-4-4L4 16Z" /><path d="m13.5 6.5 4 4M4 20h16" /></>
       case 'folder':

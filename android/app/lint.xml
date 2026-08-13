@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- The peer has a dynamic RFC1918 address, so Android's domain-based
+         allowlist cannot express the boundary. PairingUrlParser and ApiClient
+         enforce private numeric IPv4 targets before every connection. -->
+    <issue id="InsecureBaseConfiguration">
+        <ignore path="src/main/res/xml/network_security_config.xml" />
+    </issue>
+</lint>

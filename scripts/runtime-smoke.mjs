@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
-const electronExe = path.join(repoRoot, 'node_modules', 'electron', 'dist', 'electron.exe')
+const electronExe = process.env.RUNTIME_EXECUTABLE || path.join(repoRoot, 'node_modules', 'electron', 'dist', 'electron.exe')
+const isPackagedRuntime = Boolean(process.env.RUNTIME_EXECUTABLE)
 const profileDir = await mkdtemp(path.join(os.tmpdir(), 'clipboard-manager-runtime-'))
 
 async function waitForRenderer(port) {
@@ -49,15 +50,32 @@ async function connect(webSocketUrl) {
       }))
       return new Promise((resolve, reject) => pending.set(id, { resolve, reject }))
     },
+    captureScreenshot() {
+      const id = ++nextId
+      socket.send(JSON.stringify({ id, method: 'Page.captureScreenshot', params: { format: 'png' } }))
+      return new Promise((resolve, reject) => pending.set(id, { resolve, reject }))
+    },
     close() { socket.close() },
   }
+}
+
+async function waitForApi(cdp) {
+  const deadline = Date.now() + 10_000
+  while (Date.now() < deadline) {
+    try {
+      const ready = await cdp.evaluate("typeof window.api?.getMonitorPaused === 'function'")
+      if (ready.result.value === true) return
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+  throw new Error('Electron preload API was not ready')
 }
 
 async function runElectron(port, assertion) {
   const child = spawn(electronExe, [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${profileDir}`,
-    repoRoot,
+    ...(isPackagedRuntime ? [] : [repoRoot]),
     '--runtime-smoke-test',
   ], { stdio: ['ignore', 'pipe', 'pipe'] })
   let stderr = ''
@@ -67,6 +85,7 @@ async function runElectron(port, assertion) {
     const debuggerUrl = await waitForRenderer(port)
     const cdp = await connect(debuggerUrl)
     try {
+      await waitForApi(cdp)
       await assertion(cdp)
     } finally {
       cdp.close()
@@ -107,6 +126,50 @@ try {
       hasEmojiGrid: true,
     })
 
+    const devicesUi = await cdp.evaluate(`(async () => {
+      const devicesNav = document.querySelector('button[aria-label="连接设备"]')
+      devicesNav?.click()
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      const status = await window.api.getMobileSyncStatus()
+      return {
+        hasNavigationEntry: Boolean(devicesNav),
+        heading: document.querySelector('h1')?.textContent,
+        hasPairingAction: Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('配对二维码')),
+        serviceRunning: status.running,
+        portIsValid: Number.isInteger(status.port) && status.port > 0,
+      }
+    })()`)
+    assert.deepEqual(devicesUi.result.value, {
+      hasNavigationEntry: true,
+      heading: '连接设备',
+      hasPairingAction: true,
+      serviceRunning: true,
+      portIsValid: true,
+    })
+    const runtimePairing = await cdp.evaluate(`(async () => {
+      const status = await window.api.getMobileSyncStatus()
+      if (status.addresses.length === 0) return { skipped: true }
+      return await window.api.createMobilePairing(status.addresses[0].address)
+    })()`)
+    if (!runtimePairing.result.value.skipped) {
+      assert.equal(runtimePairing.result.value.success, true)
+      const pairingUrl = runtimePairing.result.value.pairing.pairingUrl
+      const pairingPage = await fetch(pairingUrl)
+      assert.equal(pairingPage.status, 200)
+      assert.match(await pairingPage.text(), /连接手机与电脑/)
+      const unauthorizedState = await fetch(new URL('/api/state', pairingUrl))
+      assert.equal(unauthorizedState.status, 401)
+    }
+    if (process.env.RUNTIME_SCREENSHOT_PATH) {
+      await cdp.evaluate(`(async () => {
+        const pairingButton = Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.includes('生成配对二维码'))
+        pairingButton?.click()
+        await new Promise((resolve) => setTimeout(resolve, 250))
+      })()`)
+      const screenshot = await cdp.captureScreenshot()
+      await writeFile(process.env.RUNTIME_SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))
+    }
+
     const invalidEmoji = await cdp.evaluate("window.api.sendEmoji(String.fromCharCode(10))")
     assert.equal(invalidEmoji.result.value.success, false)
 
@@ -126,7 +189,7 @@ try {
     assert.equal(resumed.result.value, false)
   })
 
-  console.log('Runtime smoke passed: Emoji UI, clipboard input validation, and pause persistence work across restart.')
+  console.log('Runtime smoke passed: Emoji UI, phone device UI/service, clipboard input validation, and pause persistence work across restart.')
 } finally {
   await rm(profileDir, { recursive: true, force: true })
 }

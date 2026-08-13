@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Clipboard Manager Companion</string>
+    <string name="hero_title">Clipboard Manager</string>
+    <string name="hero_subtitle">Android companion for private LAN clipboard sharing</string>
+    <string name="status_disconnected">Not connected</string>
+    <string name="connected_to">Connected to %1$s</string>
+    <string name="scan_instruction">On the PC, open Connected Devices and generate a QR code. Scan it with the Android camera, then choose “Open Android app” on the page.</string>
+    <string name="pairing_prompt_title">Connect to this computer?</string>
+    <string name="pairing_prompt_message">The app will connect to %1$s on your current private network.</string>
+    <string name="pair_action">Connect</string>
+    <string name="cancel_action">Cancel</string>
+    <string name="pairing_progress">Connecting…</string>
+    <string name="pairing_success">Phone connected</string>
+    <string name="pairing_failed">Could not connect: %1$s</string>
+    <string name="invalid_pairing_link">This pairing link is invalid or is not a private-network address.</string>
+    <string name="clipboard_title">Share text</string>
+    <string name="clipboard_input_hint">Paste or enter text to send to the computer</string>
+    <string name="read_phone_clipboard">Read Android clipboard</string>
+    <string name="send_to_computer">Send to computer</string>
+    <string name="get_from_computer">Get computer clipboard</string>
+    <string name="phone_clipboard_empty">The Android clipboard has no text.</string>
+    <string name="computer_clipboard_empty">The computer clipboard has no text.</string>
+    <string name="clipboard_sent">Sent to computer</string>
+    <string name="clipboard_received">Copied to Android clipboard</string>
+    <string name="verification_title">Verification codes</string>
+    <string name="verification_description">With explicit notification access, the app checks message-style notifications for one six-digit verification code. Full notification text is never stored or sent.</string>
+    <string name="verification_switch">Forward six-digit codes</string>
+    <string name="open_notification_settings">Open notification access</string>
+    <string name="notification_access_label">Verification code relay</string>
+    <string name="notification_access_required">Grant notification access, then return to enable forwarding.</string>
+    <string name="last_verification_never">No code has been forwarded yet.</string>
+    <string name="last_verification_success">Last forwarded successfully: %1$s</string>
+    <string name="last_verification_failed">Last forwarding attempt failed: %1$s</string>
+    <string name="privacy_note">No SMS permission and no cloud relay. Use only on a trusted private Wi-Fi network. Android clipboard access works only while this app is in the foreground.</string>
+    <string name="disconnect_action">Disconnect this phone</string>
+    <string name="disconnect_title">Disconnect phone?</string>
+    <string name="disconnect_message">The device credential will be revoked on the PC and removed from this phone.</string>
+    <string name="disconnected">Phone disconnected</string>
+    <string name="not_connected_error">Scan a new pairing QR code first.</string>
+    <string name="invalid_text">Enter between 1 and 10,000 characters.</string>
+    <string name="request_failed">Request failed: %1$s</string>
+</resources>

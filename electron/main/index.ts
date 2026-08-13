@@ -1,15 +1,17 @@
-import { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, protocol, type NativeImage } from 'electron'
+import { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, protocol, clipboard, Notification, type NativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { initDatabaseAsync, closeDatabase, getSetting, setSetting } from './database'
-import { startMonitor, stopMonitor, isMonitorPaused, setMonitorPaused } from './clipboard-monitor'
+import { startMonitor, stopMonitor, isMonitorPaused, setMonitorPaused, markClipboardHistoryItemCopied } from './clipboard-monitor'
 import { startScheduler, stopScheduler } from './scheduler'
 import { registerIpcHandlers } from './ipc-handlers'
 import { isManagedAssetPath } from './asset-paths'
+import { MobileSyncService, setMobileSyncService } from './mobile-sync'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let registeredHotkey: string | null = null
+let mobileSyncService: MobileSyncService | null = null
 const isRuntimeTest = process.argv.includes('--runtime-smoke-test')
 
 protocol.registerSchemesAsPrivileged([
@@ -301,6 +303,32 @@ app.whenReady().then(async () => {
   // Privacy pause persists until the user explicitly resumes recording.
   setMonitorPaused(getSetting('monitor_paused') === 'true')
 
+  // The phone bridge is local-only and remains available while the desktop
+  // app is minimized to the tray. Paired-device secrets are stored as hashes.
+  mobileSyncService = new MobileSyncService({
+    getSetting,
+    setSetting,
+    readClipboardText: () => clipboard.readText(),
+    writeClipboardText: (text, source) => {
+      clipboard.writeText(text)
+      const success = clipboard.readText() === text
+      if (success && source === 'otp') {
+        // Verification codes should be paste-ready without being retained in
+        // clipboard history.
+        markClipboardHistoryItemCopied({ type: 'text', content: text })
+        if (Notification.isSupported()) {
+          new Notification({ title: '验证码已复制', body: '来自手机的六位验证码已进入电脑剪贴板。' }).show()
+        }
+      }
+      return success
+    },
+    onDevicesChanged: () => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('mobile:changed')
+    },
+  })
+  await mobileSyncService.start()
+  setMobileSyncService(mobileSyncService)
+
   // Register IPC handlers
   registerIpcHandlers(updateGlobalShortcut, hideWindow, applyMonitorPaused)
 
@@ -329,6 +357,8 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   stopMonitor()
   stopScheduler()
+  void mobileSyncService?.stop()
+  setMobileSyncService(null)
   globalShortcut.unregisterAll()
   closeDatabase()
 })

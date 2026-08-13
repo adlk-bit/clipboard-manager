@@ -29,6 +29,7 @@ import { normalizeHttpUrl } from '../../shared/url'
 import { isMonitorPaused, markClipboardHistoryItemCopied } from './clipboard-monitor'
 import { getHistoryImagesDir, getStickersDir, isPathInside } from './asset-paths'
 import { readBackupFile, removePreparedFiles, writePortableBackup } from './backup'
+import { getMobileSyncService } from './mobile-sync'
 
 export interface HotkeyUpdateResult {
   success: boolean
@@ -216,6 +217,33 @@ export function registerIpcHandlers(
   ipcMain.handle('monitor:setPaused', (_event, paused: unknown) => {
     if (typeof paused !== 'boolean') throw new Error('Invalid monitor paused value')
     return applyMonitorPaused(paused)
+  })
+
+  // ---- Phone sync ----
+  ipcMain.handle('mobile:getStatus', () => {
+    const service = getMobileSyncService()
+    return service?.getStatus() || { running: false, port: null, addresses: [], devices: [], error: '手机连接服务尚未启动' }
+  })
+
+  ipcMain.handle('mobile:createPairing', (_event, address: unknown) => {
+    const service = getMobileSyncService()
+    if (!service) return { success: false, error: '手机连接服务尚未启动' }
+    try {
+      const safeAddress = typeof address === 'string' && address.length <= 45 ? address : undefined
+      return { success: true, pairing: service.createPairing(safeAddress) }
+    } catch (error) {
+      return { success: false, error: String(error instanceof Error ? error.message : error) }
+    }
+  })
+
+  ipcMain.handle('mobile:removeDevice', (_event, id: unknown) => {
+    return typeof id === 'string' ? (getMobileSyncService()?.removeDevice(id) ?? false) : false
+  })
+
+  ipcMain.handle('mobile:setOtpEnabled', (_event, id: unknown, enabled: unknown) => {
+    return typeof id === 'string' && typeof enabled === 'boolean'
+      ? (getMobileSyncService()?.setOtpEnabled(id, enabled) ?? false)
+      : false
   })
 
   // ---- Stickers ----

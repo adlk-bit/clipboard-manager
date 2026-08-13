@@ -46,6 +46,17 @@ const api = {
     return () => ipcRenderer.removeListener('monitor:paused-changed', listener)
   },
 
+  // Phone sync
+  getMobileSyncStatus: () => ipcRenderer.invoke('mobile:getStatus'),
+  createMobilePairing: (address?: string) => ipcRenderer.invoke('mobile:createPairing', address),
+  removeMobileDevice: (id: string) => ipcRenderer.invoke('mobile:removeDevice', id),
+  setMobileOtpEnabled: (id: string, enabled: boolean) => ipcRenderer.invoke('mobile:setOtpEnabled', id, enabled),
+  onMobileSyncChanged: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('mobile:changed', listener)
+    return () => ipcRenderer.removeListener('mobile:changed', listener)
+  },
+
   // Stickers
   getStickers: () => ipcRenderer.invoke('stickers:list'),
   importStickers: () => ipcRenderer.invoke('stickers:import'),

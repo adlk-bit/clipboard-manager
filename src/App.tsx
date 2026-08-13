@@ -6,6 +6,7 @@ import SearchBar from './components/SearchBar'
 import StickerGrid from './components/StickerGrid'
 import EmojiPicker from './components/EmojiPicker'
 import SettingsPanel from './components/SettingsPanel'
+import DevicesPanel from './components/DevicesPanel'
 import ConfirmDialog from './components/ConfirmDialog'
 import EditCopyDialog from './components/EditCopyDialog'
 import Toast from './components/Toast'
@@ -108,6 +109,7 @@ export default function App() {
             {currentPage === 'favorites' && '收藏记录'}
             {currentPage === 'emoji' && 'Emoji'}
             {currentPage === 'stickers' && '贴图库'}
+            {currentPage === 'devices' && '连接设备'}
             {currentPage === 'settings' && '设置'}
           </h1>
           {(currentPage === 'all' || currentPage === 'favorites') && (
@@ -122,6 +124,7 @@ export default function App() {
           {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList onCopy={showToast} onEdit={setEditCopyItem} />}
           {currentPage === 'emoji' && <EmojiPicker onCopy={showToast} />}
           {currentPage === 'stickers' && <StickerGrid onCopy={showToast} />}
+          {currentPage === 'devices' && <DevicesPanel />}
           {currentPage === 'settings' && <SettingsPanel />}
         </div>
 

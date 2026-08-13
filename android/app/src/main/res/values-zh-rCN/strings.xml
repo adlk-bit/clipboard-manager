@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">剪贴板管理器手机端</string>
+    <string name="hero_title">剪贴板管理器</string>
+    <string name="hero_subtitle">通过可信局域网与 Windows 共享剪贴板</string>
+    <string name="status_disconnected">尚未连接</string>
+    <string name="connected_to">已连接到 %1$s</string>
+    <string name="scan_instruction">在电脑“连接设备”中生成二维码，用 Android 相机扫码，然后在页面选择“用 Android 应用连接”。</string>
+    <string name="pairing_prompt_title">连接这台电脑？</string>
+    <string name="pairing_prompt_message">应用将通过当前专用网络连接到 %1$s。</string>
+    <string name="pair_action">连接</string>
+    <string name="cancel_action">取消</string>
+    <string name="pairing_progress">正在连接…</string>
+    <string name="pairing_success">手机已连接</string>
+    <string name="pairing_failed">连接失败：%1$s</string>
+    <string name="invalid_pairing_link">配对地址无效，或目标不是专用局域网地址。</string>
+    <string name="clipboard_title">共享文字</string>
+    <string name="clipboard_input_hint">在此粘贴或输入要发送到电脑的文字</string>
+    <string name="read_phone_clipboard">读取 Android 剪贴板</string>
+    <string name="send_to_computer">发送到电脑</string>
+    <string name="get_from_computer">获取电脑剪贴板</string>
+    <string name="phone_clipboard_empty">Android 剪贴板当前没有文字。</string>
+    <string name="computer_clipboard_empty">电脑剪贴板当前没有文字。</string>
+    <string name="clipboard_sent">已发送到电脑</string>
+    <string name="clipboard_received">已复制到 Android 剪贴板</string>
+    <string name="verification_title">短信验证码</string>
+    <string name="verification_description">经你明确授予通知访问后，应用只在消息类通知中查找一个六位验证码。完整通知文字不会保存或发送。</string>
+    <string name="verification_switch">转发六位验证码</string>
+    <string name="open_notification_settings">打开通知访问设置</string>
+    <string name="notification_access_label">验证码转发</string>
+    <string name="notification_access_required">请授予通知访问权限，返回后即可启用转发。</string>
+    <string name="last_verification_never">尚未转发过验证码。</string>
+    <string name="last_verification_success">上次转发成功：%1$s</string>
+    <string name="last_verification_failed">上次转发失败：%1$s</string>
+    <string name="privacy_note">不申请短信权限、不经过云端。请只在可信专用 Wi-Fi 使用；Android 剪贴板仅在应用处于前台时读取。</string>
+    <string name="disconnect_action">断开此手机</string>
+    <string name="disconnect_title">断开手机？</string>
+    <string name="disconnect_message">电脑端设备凭据会被撤销，同时删除本机保存的连接。</string>
+    <string name="disconnected">手机已断开</string>
+    <string name="not_connected_error">请先扫描新的配对二维码。</string>
+    <string name="invalid_text">请输入 1 到 10,000 个字符。</string>
+    <string name="request_failed">请求失败：%1$s</string>
+</resources>

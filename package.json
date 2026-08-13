@@ -1,6 +1,6 @@
 {
   "name": "clipboard-manager",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "description": "Windows 剪贴板历史管理工具",
   "main": "./out/main/index.js",
   "scripts": {
@@ -21,6 +21,7 @@
   "license": "MIT",
   "dependencies": {
     "fflate": "^0.8.2",
+    "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "sql.js": "^1.14.1",

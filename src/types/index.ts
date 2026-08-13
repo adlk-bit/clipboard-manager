@@ -26,6 +26,36 @@ export interface HistoryStats {
   imageBytes: number
 }
 
+export interface NetworkAddress {
+  name: string
+  address: string
+}
+
+export interface PairedDevice {
+  id: string
+  name: string
+  platform: 'iphone' | 'android'
+  pairedAt: string
+  lastSeenAt: string
+  otpEnabled: boolean
+  online: boolean
+}
+
+export interface MobileSyncStatus {
+  running: boolean
+  port: number | null
+  addresses: NetworkAddress[]
+  devices: PairedDevice[]
+  error?: string
+}
+
+export interface PairingInfo {
+  pairingUrl: string
+  address: string
+  port: number
+  expiresAt: string
+}
+
 export interface BackupExportResult {
   filePath: string
   historyCount: number
@@ -46,7 +76,7 @@ export type BackupImportResult =
       skippedDuplicates: number
     }
 
-export type PageView = 'all' | 'favorites' | 'emoji' | 'stickers' | 'settings'
+export type PageView = 'all' | 'favorites' | 'emoji' | 'stickers' | 'devices' | 'settings'
 
 export interface ElectronApi {
   getHistory: (search?: string, filter?: string, folder?: string, sort?: 'recent' | 'frequent') => Promise<HistoryItem[]>
@@ -75,6 +105,11 @@ export interface ElectronApi {
   getMonitorPaused: () => Promise<boolean>
   setMonitorPaused: (paused: boolean) => Promise<boolean>
   onMonitorPausedChanged: (callback: (paused: boolean) => void) => () => void
+  getMobileSyncStatus: () => Promise<MobileSyncStatus>
+  createMobilePairing: (address?: string) => Promise<{ success: true; pairing: PairingInfo } | { success: false; error: string }>
+  removeMobileDevice: (id: string) => Promise<boolean>
+  setMobileOtpEnabled: (id: string, enabled: boolean) => Promise<boolean>
+  onMobileSyncChanged: (callback: () => void) => () => void
   getStickers: () => Promise<StickerItem[]>
   importStickers: () => Promise<StickerItem[]>
   deleteSticker: (id: number) => Promise<StickerItem[]>

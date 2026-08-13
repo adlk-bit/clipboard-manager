@@ -7,6 +7,7 @@ const navItems: { id: PageView; label: string; icon: IconName }[] = [
   { id: 'favorites', label: '收藏', icon: 'star' },
   { id: 'emoji', label: 'Emoji', icon: 'smile' },
   { id: 'stickers', label: '贴图库', icon: 'image' },
+  { id: 'devices', label: '连接设备', icon: 'devices' },
   { id: 'settings', label: '设置', icon: 'settings' },
 ]
 
