@@ -160,21 +160,68 @@ try {
       const unauthorizedState = await fetch(new URL('/api/state', pairingUrl))
       assert.equal(unauthorizedState.status, 401)
     }
-    if (process.env.RUNTIME_SCREENSHOT_PATH) {
-      await cdp.evaluate(`(async () => {
-        const pairingButton = Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.includes('生成配对二维码'))
-        pairingButton?.click()
-        await new Promise((resolve) => setTimeout(resolve, 250))
-      })()`)
-      const screenshot = await cdp.captureScreenshot()
-      await writeFile(process.env.RUNTIME_SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))
-    }
-
     const invalidEmoji = await cdp.evaluate("window.api.sendEmoji(String.fromCharCode(10))")
     assert.equal(invalidEmoji.result.value.success, false)
 
     const invalidEditedText = await cdp.evaluate("window.api.writeTextToClipboard('')")
     assert.equal(invalidEditedText.result.value.success, false)
+
+    const settingsUi = await cdp.evaluate(`(async () => {
+      const settingsNav = document.querySelector('button[aria-label="设置"]')
+      settingsNav?.click()
+      await new Promise((resolve) => setTimeout(resolve, 150))
+
+      const darkToggle = document.querySelector('button[role="switch"]')
+      const trackBefore = darkToggle?.getBoundingClientRect()
+      const knobBefore = darkToggle?.querySelector('span')?.getBoundingClientRect()
+      darkToggle?.click()
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      const trackAfter = darkToggle?.getBoundingClientRect()
+      const knobAfter = darkToggle?.querySelector('span')?.getBoundingClientRect()
+
+      const englishButton = Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'English')
+      englishButton?.click()
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      return {
+        hasSettingsNavigation: Boolean(settingsNav),
+        heading: document.querySelector('h1')?.textContent,
+        documentLanguage: document.documentElement.lang,
+        documentTitle: document.title,
+        hasEnglishSettingsNavigation: Boolean(document.querySelector('button[aria-label="Settings"]')),
+        storedLanguage: await window.api.getSetting('language'),
+        storedDarkMode: await window.api.getSetting('dark_mode'),
+        knobStartsLeft: Boolean(trackBefore && knobBefore && knobBefore.left + knobBefore.width / 2 < trackBefore.left + trackBefore.width / 2),
+        knobEndsRight: Boolean(trackAfter && knobAfter && knobAfter.left + knobAfter.width / 2 > trackAfter.left + trackAfter.width / 2),
+        knobInsideTrack: Boolean(
+          trackBefore && knobBefore && trackAfter && knobAfter
+          && knobBefore.left >= trackBefore.left && knobBefore.right <= trackBefore.right
+          && knobAfter.left >= trackAfter.left && knobAfter.right <= trackAfter.right
+        ),
+      }
+    })()`)
+    assert.deepEqual(settingsUi.result.value, {
+      hasSettingsNavigation: true,
+      heading: 'Settings',
+      documentLanguage: 'en',
+      documentTitle: 'Clipboard Manager',
+      hasEnglishSettingsNavigation: true,
+      storedLanguage: 'en',
+      storedDarkMode: 'true',
+      knobStartsLeft: true,
+      knobEndsRight: true,
+      knobInsideTrack: true,
+    })
+    if (process.env.RUNTIME_SCREENSHOT_PATH) {
+      const screenshot = await cdp.captureScreenshot()
+      await writeFile(process.env.RUNTIME_SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))
+    }
+    const restoredDarkMode = await cdp.evaluate(`(async () => {
+      document.querySelector('button[role="switch"]')?.click()
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      return window.api.getSetting('dark_mode')
+    })()`)
+    assert.equal(restoredDarkMode.result.value, 'false')
 
     const paused = await cdp.evaluate('window.api.setMonitorPaused(true)')
     assert.equal(paused.result.value, true)
@@ -185,11 +232,28 @@ try {
   await runElectron(9322, async (cdp) => {
     const restored = await cdp.evaluate('window.api.getMonitorPaused()')
     assert.equal(restored.result.value, true)
+    const restoredLanguage = await cdp.evaluate(`(async () => {
+      const deadline = Date.now() + 5_000
+      while (!document.querySelector('button[aria-label="Settings"]') && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      return {
+        setting: await window.api.getSetting('language'),
+        heading: document.querySelector('h1')?.textContent,
+        hasEnglishNavigation: Boolean(document.querySelector('button[aria-label="Settings"]')),
+      }
+    })()`)
+    assert.deepEqual(restoredLanguage.result.value, {
+      setting: 'en',
+      heading: 'Clipboard History',
+      hasEnglishNavigation: true,
+    })
+    await cdp.evaluate("window.api.setSetting('language', 'zh-CN')")
     const resumed = await cdp.evaluate('window.api.setMonitorPaused(false)')
     assert.equal(resumed.result.value, false)
   })
 
-  console.log('Runtime smoke passed: Emoji UI, phone device UI/service, clipboard input validation, and pause persistence work across restart.')
+  console.log('Runtime smoke passed: Emoji UI, phone device UI/service, settings switch geometry, language persistence, clipboard input validation, and pause persistence work across restart.')
 } finally {
   await rm(profileDir, { recursive: true, force: true })
 }

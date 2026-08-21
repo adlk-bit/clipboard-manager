@@ -3,6 +3,7 @@ import type { HistoryItem } from '../types'
 import { useStore } from '../stores/useStore'
 import { normalizeHttpUrl } from '../../shared/url'
 import Icon from './Icon'
+import { useI18n, type AppLanguage } from '../lib/i18n'
 
 interface HistoryCardProps {
   item: HistoryItem
@@ -13,6 +14,7 @@ interface HistoryCardProps {
 const actionButtonClass = 'flex size-6 items-center justify-center rounded text-[#8a8a90] transition-colors hover:bg-black/[0.05] hover:text-[#3a3a3c] focus-visible:opacity-100 dark:text-[#96969c] dark:hover:bg-white/[0.08] dark:hover:text-white'
 
 const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryCardProps) {
+  const { language, t } = useI18n()
   const [copied, setCopied] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState(false)
   const [choosingFolder, setChoosingFolder] = useState(false)
@@ -32,7 +34,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
   const isSelected = selectedIds.has(item.id)
   const isKeyboardActive = keyboardActiveId === item.id
   const filter = currentPage === 'favorites' ? 'favorites' : 'all'
-  const timeStr = formatTime(item.created_at)
+  const timeStr = formatTime(item.created_at, language)
   const imageUrl = item.image_path
     ? `local-asset://file/${encodeURIComponent(item.image_path)}`
     : ''
@@ -52,13 +54,13 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
     const result = await window.api.copyToClipboard(item.id)
     if (!result.success) {
       setCopied(false)
-      onCopy('复制失败')
+      onCopy(t('card.copyFailed'))
       return
     }
     const label = item.type === 'text'
-      ? (item.content?.slice(0, 20) + (item.content && item.content.length > 20 ? '...' : '')) || '文字'
-      : '图片'
-    onCopy(`已复制: ${label}`)
+      ? (item.content?.slice(0, 20) + (item.content && item.content.length > 20 ? '...' : '')) || t('card.text')
+      : t('card.image')
+    onCopy(t('card.copied', { label }))
     setTimeout(() => setCopied(false), 800)
   }
 
@@ -75,7 +77,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
     const result = await window.api.openExternalUrl(openableUrl)
     if (!result.success) {
       console.error('Failed to open URL:', result.error)
-      onCopy('链接打开失败')
+      onCopy(t('card.openFailed'))
     }
   }
 
@@ -167,11 +169,11 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
                 />
               </div>
               <div>
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700 dark:text-gray-400">图片</span>
+                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700 dark:text-gray-400">{t('card.image')}</span>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-500">[图片已丢失]</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{t('card.missingImage')}</p>
           )}
 
           {currentPage === 'favorites' && item.type === 'text' && (
@@ -185,25 +187,25 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
 
           {currentPage === 'all' && item.use_count > 1 && (
             <div className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
-              已使用 {item.use_count} 次
+              {t('card.used', { count: item.use_count })}
             </div>
           )}
         </div>
 
         {currentPage === 'favorites' && editingFavorite && !selectionMode && (
           <div className="mt-2 space-y-1.5 rounded-md bg-gray-50 p-2 dark:bg-gray-700/50" onClick={(e) => e.stopPropagation()}>
-            <input value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="文件夹，例如：工作" className="no-drag w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-primary-400 dark:border-gray-600 dark:bg-gray-700" />
-            <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="标签，用逗号分隔" className="no-drag w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-primary-400 dark:border-gray-600 dark:bg-gray-700" />
+            <input value={folder} onChange={(e) => setFolder(e.target.value)} placeholder={t('card.folderPlaceholder')} className="no-drag w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-primary-400 dark:border-gray-600 dark:bg-gray-700" />
+            <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t('card.tagsPlaceholder')} className="no-drag w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-primary-400 dark:border-gray-600 dark:bg-gray-700" />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setEditingFavorite(false)} className="no-drag text-xs text-gray-500">取消</button>
-              <button onClick={handleSaveFavoriteMetadata} className="no-drag rounded bg-primary-500 px-2 py-1 text-xs text-white">保存</button>
+              <button onClick={() => setEditingFavorite(false)} className="no-drag text-xs text-gray-500">{t('common.cancel')}</button>
+              <button onClick={handleSaveFavoriteMetadata} className="no-drag rounded bg-primary-500 px-2 py-1 text-xs text-white">{t('common.save')}</button>
             </div>
           </div>
         )}
 
         {currentPage === 'favorites' && choosingFolder && !selectionMode && (
           <div className="mt-2 rounded-md bg-gray-50 p-2 dark:bg-gray-700/50" onClick={(e) => e.stopPropagation()}>
-            <p className="mb-1.5 text-[10px] text-gray-500 dark:text-gray-400">选择已有文件夹</p>
+            <p className="mb-1.5 text-[10px] text-gray-500 dark:text-gray-400">{t('card.chooseFolder')}</p>
             {favoriteFolders.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {favoriteFolders.map((favoriteFolder) => (
@@ -211,10 +213,10 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
                     {favoriteFolder}
                   </button>
                 ))}
-                {item.favorite_folder && <button onClick={(e) => handleAssignFolder(e, '')} className="no-drag rounded px-2 py-1 text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 dark:text-gray-300">移出文件夹</button>}
+                {item.favorite_folder && <button onClick={(e) => handleAssignFolder(e, '')} className="no-drag rounded px-2 py-1 text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 dark:text-gray-300">{t('card.removeFolder')}</button>}
               </div>
             ) : (
-              <p className="text-xs text-gray-500 dark:text-gray-400">还没有文件夹，请先通过标签按钮创建一个。</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('card.noFolder')}</p>
             )}
           </div>
         )}
@@ -226,8 +228,8 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
               <button
                 type="button"
                 onClick={(event) => { event.stopPropagation(); onEdit(item) }}
-                aria-label="编辑后复制"
-                title="编辑后复制"
+                aria-label={t('card.editCopy')}
+                title={t('card.editCopy')}
                 className="flex size-7 items-center justify-center rounded-md bg-[#f1f1f3] text-[#77777d] transition-colors duration-100 hover:bg-[#e4f1fc] hover:text-[#006bd6] dark:bg-white/[0.07] dark:text-[#aaaab0] dark:hover:bg-[#0a84ff]/20 dark:hover:text-[#53a9ff]"
               >
                 <Icon name="edit" size={14} />
@@ -236,13 +238,13 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
             <button
               type="button"
               onClick={handleCopy}
-              aria-label="复制到剪贴板"
+              aria-label={t('card.copyClipboard')}
               className={`flex size-7 items-center justify-center rounded-md transition-colors duration-100 ${
                 copied
                   ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
                   : 'bg-[#f1f1f3] text-[#77777d] hover:bg-[#e4f1fc] hover:text-[#006bd6] dark:bg-white/[0.07] dark:text-[#aaaab0] dark:hover:bg-[#0a84ff]/20 dark:hover:text-[#53a9ff]'
               }`}
-              title="复制到剪贴板"
+              title={t('card.copyClipboard')}
             >
               <Icon name={copied ? 'check' : 'copy'} size={14} strokeWidth={copied ? 2.5 : 1.8} />
             </button>
@@ -255,7 +257,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
             {item.is_pinned === 1 && !selectionMode && (
               <span className="flex items-center gap-0.5 text-[10px] text-primary-500 dark:text-primary-400">
                 <Icon name="pin" size={11} />
-                置顶
+                {t('card.pinned')}
               </span>
             )}
             <span className="shrink-0 text-[10px] tracking-[0.01em] text-[#8e8e93] dark:text-[#98989d]">{timeStr}</span>
@@ -267,38 +269,38 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
                 <button
                   onClick={handleOpenUrl}
                   className={actionButtonClass}
-                  title="在浏览器中打开链接"
-                  aria-label="在浏览器中打开链接"
+                  title={t('card.openLink')}
+                  aria-label={t('card.openLink')}
                 >
                   <Icon name="link" size={14} />
                 </button>
               )}
               {currentPage === 'favorites' && (
                 <>
-                  <button onClick={(e) => { e.stopPropagation(); setEditingFavorite(!editingFavorite) }} className={actionButtonClass} title="编辑文件夹和标签" aria-label="编辑文件夹和标签"><Icon name="tag" size={14} /></button>
-                  <button onClick={(e) => { e.stopPropagation(); setChoosingFolder(!choosingFolder) }} className={actionButtonClass} title="归入已有文件夹" aria-label="归入已有文件夹"><Icon name="folder" size={14} /></button>
-                  <button onClick={(e) => handleMoveFavorite(e, 'up')} className={actionButtonClass} title="上移" aria-label="上移"><Icon name="chevron-up" size={14} /></button>
-                  <button onClick={(e) => handleMoveFavorite(e, 'down')} className={actionButtonClass} title="下移" aria-label="下移"><Icon name="chevron-down" size={14} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); setEditingFavorite(!editingFavorite) }} className={actionButtonClass} title={t('card.editTags')} aria-label={t('card.editTags')}><Icon name="tag" size={14} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); setChoosingFolder(!choosingFolder) }} className={actionButtonClass} title={t('card.assignFolder')} aria-label={t('card.assignFolder')}><Icon name="folder" size={14} /></button>
+                  <button onClick={(e) => handleMoveFavorite(e, 'up')} className={actionButtonClass} title={t('card.moveUp')} aria-label={t('card.moveUp')}><Icon name="chevron-up" size={14} /></button>
+                  <button onClick={(e) => handleMoveFavorite(e, 'down')} className={actionButtonClass} title={t('card.moveDown')} aria-label={t('card.moveDown')}><Icon name="chevron-down" size={14} /></button>
                 </>
               )}
               <button
                 onClick={handleTogglePin}
-                aria-label={item.is_pinned ? '取消置顶' : '置顶'}
+                aria-label={item.is_pinned ? t('card.unpin') : t('card.pinned')}
                 className={`flex size-6 items-center justify-center rounded transition-colors ${
                   item.is_pinned ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' : actionButtonClass
                 }`}
-                title={item.is_pinned ? '取消置顶' : '置顶'}
+                title={item.is_pinned ? t('card.unpin') : t('card.pinned')}
               >
                 <Icon name="pin" size={14} />
               </button>
 
               <button
                 onClick={handleToggleFavorite}
-                aria-label={item.is_favorite ? '取消收藏' : '收藏'}
+                aria-label={item.is_favorite ? t('card.unfavorite') : t('card.favorite')}
                 className={`flex size-6 items-center justify-center rounded transition-colors ${
                   item.is_favorite ? 'bg-amber-50 text-amber-500 dark:bg-amber-900/20' : actionButtonClass
                 }`}
-                title={item.is_favorite ? '取消收藏' : '收藏'}
+                title={item.is_favorite ? t('card.unfavorite') : t('card.favorite')}
               >
                 <Icon name="star" size={14} fill={item.is_favorite ? 'currentColor' : 'none'} />
               </button>
@@ -306,8 +308,8 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
               <button
                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(item.id) }}
                 className={`${actionButtonClass} hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400`}
-                title="删除"
-                aria-label="删除"
+                title={t('card.delete')}
+                aria-label={t('card.delete')}
               >
                 <Icon name="trash" size={14} />
               </button>
@@ -322,7 +324,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
 
 export default HistoryCard
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, language: AppLanguage): string {
   const date = new Date(dateStr + 'Z')
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -330,12 +332,12 @@ function formatTime(dateStr: string): string {
   const diffHour = Math.floor(diffMs / 3600000)
   const diffDay = Math.floor(diffMs / 86400000)
 
-  if (diffMin < 1) return '刚刚'
-  if (diffMin < 60) return `${diffMin} 分钟前`
-  if (diffHour < 24) return `${diffHour} 小时前`
-  if (diffDay < 7) return `${diffDay} 天前`
+  if (diffMin < 1) return language === 'en' ? 'Just now' : '刚刚'
+  if (diffMin < 60) return language === 'en' ? `${diffMin}m ago` : `${diffMin} 分钟前`
+  if (diffHour < 24) return language === 'en' ? `${diffHour}h ago` : `${diffHour} 小时前`
+  if (diffDay < 7) return language === 'en' ? `${diffDay}d ago` : `${diffDay} 天前`
 
-  return date.toLocaleDateString('zh-CN', {
+  return date.toLocaleDateString(language === 'en' ? 'en-US' : 'zh-CN', {
     month: 'short',
     day: 'numeric',
   })

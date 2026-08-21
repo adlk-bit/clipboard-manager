@@ -1,0 +1,79 @@
+name: Bug report / Bug 反馈
+description: Report a reproducible desktop or Android problem / 提交可复现的桌面端或 Android 问题
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the project. Remove clipboard contents, pairing tokens, device secrets, private IP addresses, local paths, and personal data before submitting. Security vulnerabilities belong in a private security advisory.
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface / 受影响端
+      options:
+        - Windows desktop
+        - Android companion
+        - Phone pairing web page
+        - Build or packaging
+        - Documentation
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit / 版本或提交
+      placeholder: v1.1.0 or commit SHA
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / 环境
+      description: OS version, Android device/API level, and network type when relevant. Do not include private addresses.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps / 复现步骤
+      placeholder: |
+        1. Open…
+        2. Click…
+        3. Observe…
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / 预期行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / 实际行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted logs or screenshots / 已脱敏日志或截图
+      description: Drag files here only after removing sensitive clipboard, pairing, path, IP, and personal data.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist / 检查项
+      options:
+        - label: I searched existing Issues and tested a current version when practical.
+          required: true
+        - label: This is not a security vulnerability and all evidence is redacted.
+          required: true

@@ -1,11 +1,13 @@
 import { useStore } from '../stores/useStore'
 import Icon from './Icon'
+import { useI18n } from '../lib/i18n'
 
 interface ConfirmDialogProps {
   type: 'delete' | 'clearAll' | 'batchDelete'
 }
 
 export default function ConfirmDialog({ type }: ConfirmDialogProps) {
+  const { t } = useI18n()
   const confirmDeleteId = useStore((s) => s.confirmDeleteId)
   const setConfirmDeleteId = useStore((s) => s.setConfirmDeleteId)
   const setConfirmClearAll = useStore((s) => s.setConfirmClearAll)
@@ -54,14 +56,14 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
             <Icon name={type === 'clearAll' ? 'warning' : 'trash'} size={18} />
           </div>
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-            {type === 'delete' ? '确认删除这条记录？' : type === 'batchDelete' ? `确认删除 ${selectedIds.size} 条记录？` : '确认清空全部记录？'}
+            {type === 'delete' ? t('confirm.deleteTitle') : type === 'batchDelete' ? t('confirm.batchTitle', { count: selectedIds.size }) : t('confirm.clearTitle')}
           </h3>
           <p className="mt-1 text-[11px] leading-4 text-gray-400 dark:text-gray-500">
             {type === 'delete'
-              ? '删除后无法恢复'
+              ? t('confirm.deleteDetail')
               : type === 'batchDelete'
-              ? `将删除选中的 ${selectedIds.size} 条记录，此操作无法恢复`
-              : '此操作将删除所有历史记录（不包括贴图），无法恢复'}
+              ? t('confirm.batchDetail', { count: selectedIds.size })
+              : t('confirm.clearDetail')}
           </p>
         </div>
 
@@ -70,13 +72,13 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
             onClick={handleCancel}
             className="h-8 flex-1 rounded-md bg-gray-100 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
             className="h-8 flex-1 rounded-md bg-red-500 text-xs font-medium text-white transition-colors hover:bg-red-600"
           >
-            {type === 'delete' ? '删除' : type === 'batchDelete' ? '删除' : '清空全部'}
+            {type === 'clearAll' ? t('confirm.clear') : t('common.delete')}
           </button>
         </div>
       </div>

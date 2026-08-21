@@ -40,6 +40,7 @@ export interface HotkeyUpdateResult {
 const SETTINGS_VALIDATORS: Record<string, (value: string) => boolean> = {
   retention_days: (value) => ['0', '1', '3', '5'].includes(value),
   dark_mode: (value) => value === 'true' || value === 'false',
+  language: (value) => value === 'zh-CN' || value === 'en',
   max_history_items: (value) => ['100', '300', '500', '1000'].includes(value),
   max_image_size_mb: (value) => ['1', '5', '10', '20'].includes(value),
   hotkey: (value) => value.length <= 80,
@@ -58,6 +59,7 @@ export function registerIpcHandlers(
   updateHotkey: (hotkey: string) => HotkeyUpdateResult,
   hideMainWindow: () => void,
   applyMonitorPaused: (paused: boolean) => boolean,
+  refreshApplicationLanguage: () => void,
 ) {
   // ---- History ----
   ipcMain.handle('history:list', (_event, search: unknown, filter: unknown, folder: unknown = '', sort: unknown = 'recent') => {
@@ -201,12 +203,13 @@ export function registerIpcHandlers(
     }
     setSetting(key, value)
     if (key === 'max_history_items') enforceHistoryLimit(parseInt(value, 10))
+    if (key === 'language') refreshApplicationLanguage()
   })
 
   ipcMain.handle('history:stats', () => getHistoryStats())
 
   ipcMain.handle('settings:setHotkey', (_event, hotkey: unknown) => {
-    if (typeof hotkey !== 'string') return { success: false, error: '快捷键格式无效。' }
+    if (typeof hotkey !== 'string') return { success: false, error: getSetting('language') === 'en' ? 'Invalid shortcut.' : '快捷键格式无效。' }
 
     const result = updateHotkey(hotkey)
     if (result.success && result.hotkey) setSetting('hotkey', result.hotkey)
@@ -222,12 +225,12 @@ export function registerIpcHandlers(
   // ---- Phone sync ----
   ipcMain.handle('mobile:getStatus', () => {
     const service = getMobileSyncService()
-    return service?.getStatus() || { running: false, port: null, addresses: [], devices: [], error: '手机连接服务尚未启动' }
+    return service?.getStatus() || { running: false, port: null, addresses: [], devices: [], error: getSetting('language') === 'en' ? 'Phone connection service has not started.' : '手机连接服务尚未启动' }
   })
 
   ipcMain.handle('mobile:createPairing', (_event, address: unknown) => {
     const service = getMobileSyncService()
-    if (!service) return { success: false, error: '手机连接服务尚未启动' }
+    if (!service) return { success: false, error: getSetting('language') === 'en' ? 'Phone connection service has not started.' : '手机连接服务尚未启动' }
     try {
       const safeAddress = typeof address === 'string' && address.length <= 45 ? address : undefined
       return { success: true, pairing: service.createPairing(safeAddress) }
@@ -329,12 +332,15 @@ export function registerIpcHandlers(
     let prepared: ReturnType<typeof readBackupFile> | null = null
     try {
       prepared = readBackupFile(result.filePaths[0], getHistoryImagesDir(), getStickersDir())
+      const english = getSetting('language') === 'en'
       const choice = await dialog.showMessageBox({
         type: 'question',
-        title: '导入备份',
-        message: '请选择恢复方式',
-        detail: '合并导入会保留现有数据并跳过重复内容；覆盖现有数据会替换当前历史和贴图库。',
-        buttons: ['合并导入', '覆盖现有数据', '取消'],
+        title: english ? 'Import backup' : '导入备份',
+        message: english ? 'Choose how to restore this backup' : '请选择恢复方式',
+        detail: english
+          ? 'Merge keeps existing data and skips duplicates. Replace overwrites the current history and sticker library.'
+          : '合并导入会保留现有数据并跳过重复内容；覆盖现有数据会替换当前历史和贴图库。',
+        buttons: english ? ['Merge import', 'Replace existing data', 'Cancel'] : ['合并导入', '覆盖现有数据', '取消'],
         defaultId: 0,
         cancelId: 2,
         noLink: true,
@@ -346,6 +352,7 @@ export function registerIpcHandlers(
 
       const mode = choice.response === 1 ? 'replace' : 'merge'
       const imported = importBackupSnapshot(prepared.snapshot, mode)
+      refreshApplicationLanguage()
       const restoredMonitorPaused = prepared.snapshot.settings.monitor_paused
       if (restoredMonitorPaused === 'true' || restoredMonitorPaused === 'false') {
         applyMonitorPaused(restoredMonitorPaused === 'true')

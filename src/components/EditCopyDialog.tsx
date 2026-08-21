@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { HistoryItem } from '../types'
 import Icon from './Icon'
+import { useI18n } from '../lib/i18n'
 
 interface EditCopyDialogProps {
   item: HistoryItem
@@ -9,6 +10,7 @@ interface EditCopyDialogProps {
 }
 
 export default function EditCopyDialog({ item, onClose, onCopied }: EditCopyDialogProps) {
+  const { t } = useI18n()
   const [content, setContent] = useState(item.content || '')
   const [error, setError] = useState('')
   const [copying, setCopying] = useState(false)
@@ -37,12 +39,12 @@ export default function EditCopyDialog({ item, onClose, onCopied }: EditCopyDial
       : await window.api.writeTextToClipboard(content)
 
     if (!result.success) {
-      setError('复制失败，请重试。')
+      setError(t('edit.failed'))
       setCopying(false)
       return
     }
 
-    onCopied(content === item.content ? '内容已复制' : '编辑后的内容已复制')
+    onCopied(content === item.content ? t('edit.copied') : t('edit.copiedChanged'))
     onClose()
   }
 
@@ -57,13 +59,13 @@ export default function EditCopyDialog({ item, onClose, onCopied }: EditCopyDial
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <h3 id="edit-copy-title" className="text-sm font-semibold text-[#2f2f33] dark:text-[#f2f2f5]">编辑后复制</h3>
-            <p className="mt-0.5 text-[11px] leading-4 text-[#85858b] dark:text-[#99999f]">原历史记录不会被修改</p>
+            <h3 id="edit-copy-title" className="text-sm font-semibold text-[#2f2f33] dark:text-[#f2f2f5]">{t('edit.title')}</h3>
+            <p className="mt-0.5 text-[11px] leading-4 text-[#85858b] dark:text-[#99999f]">{t('edit.hint')}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="关闭编辑框"
+            aria-label={t('edit.close')}
             className="flex size-6 shrink-0 items-center justify-center rounded text-[#85858b] transition-colors hover:bg-black/[0.06] hover:text-[#333338] dark:text-[#99999f] dark:hover:bg-white/[0.08] dark:hover:text-white"
           >
             <Icon name="x" size={14} />
@@ -85,7 +87,7 @@ export default function EditCopyDialog({ item, onClose, onCopied }: EditCopyDial
           }}
           maxLength={10000}
           spellCheck={false}
-          aria-label="编辑复制内容"
+          aria-label={t('edit.content')}
           className="h-44 w-full resize-none rounded-lg border border-[#d7d7dc] bg-[#fafafa] px-2.5 py-2 text-[13px] leading-5 text-[#303034] outline-none transition-colors focus:border-[#3d91df] focus:bg-white dark:border-white/10 dark:bg-black/20 dark:text-[#eeeeF2] dark:focus:border-[#3d91df] dark:focus:bg-black/10"
         />
 
@@ -100,7 +102,7 @@ export default function EditCopyDialog({ item, onClose, onCopied }: EditCopyDial
             onClick={onClose}
             className="h-8 flex-1 rounded-md bg-gray-100 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -109,11 +111,11 @@ export default function EditCopyDialog({ item, onClose, onCopied }: EditCopyDial
             className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-[#087bd1] text-xs font-medium text-white transition-colors hover:bg-[#006bbb] disabled:cursor-not-allowed disabled:bg-[#b8c7d3] dark:bg-[#1687da] dark:hover:bg-[#2695e5] dark:disabled:bg-[#46535d]"
           >
             <Icon name="copy" size={13} />
-            {copying ? '复制中…' : '复制修改内容'}
+            {copying ? t('edit.copying') : t('edit.copy')}
           </button>
         </div>
 
-        <p className="mt-2 text-center text-[10px] text-[#9a9aa0] dark:text-[#7f7f85]">Ctrl + Enter 快速复制</p>
+        <p className="mt-2 text-center text-[10px] text-[#9a9aa0] dark:text-[#7f7f85]">{t('edit.shortcut')}</p>
       </div>
     </div>
   )

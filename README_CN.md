@@ -4,6 +4,19 @@
 
 [English](README.md)
 
+[![CI](https://github.com/adlk-bit/clipboard-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/adlk-bit/clipboard-manager/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> **项目状态：** 这是一个由小规模维护者持续维护的项目，欢迎真实 Windows / Android 使用反馈和可复现 Issue。Stars 与下载量不会被描述为“广泛采用”的证据。
+
+---
+
+## 真实运行截图
+
+![深色模式下选择英文的 Clipboard Manager 设置界面](docs/images/settings-language-en.png)
+
+截图来自实际 Electron 运行时，窗口为默认 400 × 600；可在设置中即时切换简体中文与英文。
+
 ---
 
 ## ✨ 功能
@@ -25,6 +38,7 @@
 | ☑️ **批量管理** | 多选记录后批量删除 |
 | 🗑️ **自动清理** | 支持 1 天 / 3 天 / 5 天 / 永久，按最近使用时间判断过期并同步清理图片文件 |
 | 🌙 **紧凑系统界面** | 节省空间的浅色 / 深色界面，统一 SVG 图标、清晰主操作，并支持减少动效偏好 |
+| 🌐 **中英文界面** | 可在设置中切换完整桌面界面的简体中文 / English，选择会跨重启保留 |
 | 📤 **完整便携备份** | `.clipbackup` 包含文字、图片、贴图库、收藏元数据和安全设置，支持合并/覆盖恢复及旧版 JSON 导入 |
 | 🛡️ **本地数据保护** | 数据库原子快照、启动完整性修复、受限本地资源访问、CSP 与沙箱渲染 |
 | ⌨️ **可配置全局热键** | 可直接在设置中录入新快捷键，默认 `Ctrl+Shift+V` |
@@ -115,7 +129,7 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 | Android 验证码 | Android 配套应用 → 开启转发 → 在系统设置授予通知访问 |
 | iPhone 验证码 | 配对后的 iPhone 页面 → 按说明创建“信息”个人自动化 |
 | 撤销手机 | 左侧 →「连接设备」→ 已连接设备 → 🗑️ |
-| 设置 | 左侧 →「设置」→ 存储期限 / 外观 / 自定义热键 / 存储限制 |
+| 设置 | 左侧 →「设置」→ 存储期限 / 外观 / 语言 / 自定义热键 / 存储限制 |
 | 备份 | 设置 →「完整备份 / 恢复备份」，然后选择合并或覆盖 |
 
 ---
@@ -174,6 +188,40 @@ clipboard-manager/
 
 ---
 
+## 架构与信任边界
+
+```mermaid
+flowchart LR
+  Clipboard[Windows 剪贴板] --> Main[Electron 主进程]
+  Renderer[React 渲染进程] <--> Preload[受限 preload 桥接]
+  Preload <--> Main
+  Main --> DB[(本地 SQLite/WASM 快照)]
+  Main --> Assets[受控本地图片目录]
+  Phone[iPhone 浏览器 / Android 配套应用] -->|经鉴权的局域网 HTTP| Pairing[配对与同步服务]
+  Pairing --> Main
+  AndroidNotifications[Android 消息类通知] --> Filter[设备端六位数字过滤]
+  Filter -->|仅启用时发送验证码| Pairing
+```
+
+- 渲染进程保持沙箱隔离，不能直接访问 Node.js；只有经过校验的 IPC 方法可跨越 preload 边界。
+- 剪贴板历史、图片、设置、配对密钥哈希和备份都留在用户设备上；项目不运营云端中继。
+- 手机配对限制为私有数字 IPv4、短时一次性二维码、鉴权请求和显式撤销。
+- Windows 与 Android Release 签名由维护者控制，Pull Request CI 不执行签名。
+
+### 隐私威胁模型
+
+| 资产或边界 | 主要威胁 | 当前控制 | 剩余风险 / 用户操作 |
+|---|---|---|---|
+| 剪贴板历史与图片 | 非预期保留、超大图片、数据库快照损坏 | 隐私暂停、保留期/容量限制、原子快照、启动完整性修复、受控图片路径 | 任何剪贴板工具都可能持有敏感内容；处理秘密前暂停记录或及时清空 |
+| 渲染进程、IPC 与本地文件 | 未可信输入、页面跳转、任意文件读取 | 上下文隔离、沙箱、CSP、禁止外部导航、窄化 preload API、IPC 输入校验、受控资源目录 | 已被攻陷的系统账户或本地进程超出应用隔离边界 |
+| 局域网配对与同步 | 暴露在公共网络、令牌重用、未授权设备、设备密钥泄露 | 私网 IPv4 校验、5 分钟一次性令牌、Windows 仅存哈希、请求鉴权、按设备控制与撤销 | 传输为 HTTP 而非端到端加密；只在可信私有 Wi-Fi 使用，绝不分享实时二维码/URL |
+| Android 验证码 | 过度收集通知、滥用短信权限、验证码重放 | 不申请短信权限、显式通知访问、消息/语义过滤、唯一六位数字提取、去重、只转发数字且不写历史 | 通知访问权限较强；仅在需要时开启，并可审查 Android 源码与构建 |
+| 备份与 Release 产物 | 路径穿越、畸形归档、签名材料泄露、二进制替换 | 归档校验与大小限制、受控解包路径、CI 测试/lint、本地签名密钥、固定产物命名 | 备份包含私人剪贴板数据且应用不加密；应安全存放和传输 |
+
+安全问题请按 [SECURITY.md](SECURITY.md) 私下报告，不要公开提交 Issue。
+
+---
+
 ## 🛠️ 技术栈
 
 | 层 | 技术 |
@@ -203,6 +251,15 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
 ```
+
+---
+
+## 贡献与真实反馈
+
+- 阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，了解桌面/Android 开发环境、必跑检查、脱敏要求和 PR 规范。
+- 提交可复现的 [Bug 反馈](https://github.com/adlk-bit/clipboard-manager/issues/new?template=bug_report.yml) 或范围明确的 [功能建议](https://github.com/adlk-bit/clipboard-manager/issues/new?template=feature_request.yml)。
+- 真实 Windows 与 Android 设备结果尤其有价值，请注明测试版本以及尚未验证的边界。
+- 维护自动化将保持范围窄、可审计；PR 审查、IPC/LAN 安全、依赖升级和双平台 Release QA 的方案见[可验证维护自动化计划](docs/maintainer-automation-plan.md)。
 
 ---
 

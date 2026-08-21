@@ -4,6 +4,19 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 
 [中文版](README_CN.md)
 
+[![CI](https://github.com/adlk-bit/clipboard-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/adlk-bit/clipboard-manager/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> **Project status:** Actively maintained by a small project. Real Windows/Android feedback and reproducible Issues are welcome. Stars and download counts are not presented as evidence of broad adoption.
+
+---
+
+## Runtime Screenshot
+
+![Clipboard Manager Settings in dark mode with English selected](docs/images/settings-language-en.png)
+
+Captured from the actual Electron runtime at the default 400 × 600 window size. The interface can switch immediately between Simplified Chinese and English from Settings.
+
 ---
 
 ## ✨ Features
@@ -25,6 +38,7 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 | ☑️ **Batch Mode** | Select multiple entries for bulk deletion |
 | 🗑️ **Auto-Cleanup** | Choose 1 / 3 / 5 days or forever; expiry follows last use and removes linked image files |
 | 🌙 **Compact System UI** | A space-efficient light/dark interface with unified SVG icons, clear primary actions, and reduced-motion support |
+| 🌐 **Bilingual Interface** | Switch the full desktop interface between Simplified Chinese and English in Settings; the choice persists across restarts |
 | 📤 **Portable Backup & Restore** | `.clipbackup` includes text, images, stickers, favorite metadata, and safe settings; merge/replace restore and legacy JSON import are supported |
 | 🛡️ **Local Data Protection** | Atomic database snapshots, startup integrity repair, restricted local-asset access, CSP, and sandboxed rendering |
 | ⌨️ **Configurable Hotkey** | Record a new global shortcut directly in Settings; `Ctrl+Shift+V` is the default |
@@ -115,7 +129,7 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 | Android codes | Android companion → enable relay → grant notification access in system settings |
 | iPhone codes | Paired iPhone page → follow the Messages personal-automation guide |
 | Revoke phone | Sidebar → "Connected Devices" → paired device → 🗑️ |
-| Settings | Sidebar → "Settings" → retention / appearance / custom hotkey / storage limits |
+| Settings | Sidebar → "Settings" → retention / appearance / language / custom hotkey / storage limits |
 | Backup | Settings → Complete Backup / Restore Backup, then choose merge or replace |
 
 ---
@@ -174,6 +188,40 @@ clipboard-manager/
 
 ---
 
+## Architecture and Trust Boundaries
+
+```mermaid
+flowchart LR
+  Clipboard[Windows Clipboard] --> Main[Electron main process]
+  Renderer[React renderer] <--> Preload[Narrow preload bridge]
+  Preload <--> Main
+  Main --> DB[(Local SQLite/WASM snapshot)]
+  Main --> Assets[Managed local image files]
+  Phone[iPhone browser / Android companion] -->|Authenticated LAN HTTP| Pairing[Pairing and sync service]
+  Pairing --> Main
+  AndroidNotifications[Android message notifications] --> Filter[On-device six-digit filter]
+  Filter -->|Code only, when enabled| Pairing
+```
+
+- The renderer is sandboxed and cannot access Node.js directly; validated IPC methods cross the preload boundary.
+- Clipboard history, images, settings, pairing hashes, and backups remain on the user's devices. The project does not operate a cloud relay.
+- Phone pairing is intentionally limited to private numeric IPv4 addresses, short-lived single-use QR tokens, authenticated requests, and explicit revocation.
+- Windows and Android release signing are maintainer-controlled and are not performed by pull-request CI.
+
+### Privacy Threat Model
+
+| Asset or boundary | Main threats considered | Current controls | Residual risk / user action |
+|---|---|---|---|
+| Clipboard history and images | Unintended retention, oversized images, corrupt snapshots | Privacy pause, retention/capacity limits, atomic snapshots, startup integrity repair, managed image paths | Any clipboard manager holds sensitive content; pause capture or clear history before handling secrets |
+| Renderer, IPC, and local files | Untrusted renderer input, navigation, arbitrary file access | Context isolation, sandbox, CSP, denied navigation, narrow preload API, validated IPC input, managed asset directories | A compromised OS account or local process is outside the application's isolation boundary |
+| LAN pairing and sync | Public-network exposure, token reuse, unauthorized device, leaked device secret | Private IPv4 validation, five-minute single-use tokens, hashed secrets on Windows, authenticated requests, per-device controls and revocation | Transport is HTTP, not end-to-end encrypted; use trusted private Wi-Fi only and never share a live QR/URL |
+| Android verification codes | Excessive notification collection, SMS permission abuse, replay | No SMS permissions, explicit notification access, message/context checks, unique six-digit extraction, deduplication, code-only relay, no history retention | Notification access is powerful; enable it only when needed and review the Android source/build |
+| Backups and release artifacts | Path traversal, malformed archive, leaked signing material, substituted binary | Archive validation and size limits, managed extraction paths, CI tests/lint, local signing secrets, published artifact names | Backups contain private clipboard data and are not encrypted by the app; store and transfer them securely |
+
+Security reports should use the private process in [SECURITY.md](SECURITY.md), not a public Issue.
+
+---
+
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
@@ -203,6 +251,15 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
 ```
+
+---
+
+## Contributing and Feedback
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) for desktop/Android setup, required checks, redaction rules, and PR expectations.
+- Submit a reproducible [Bug report](https://github.com/adlk-bit/clipboard-manager/issues/new?template=bug_report.yml) or a focused [Feature request](https://github.com/adlk-bit/clipboard-manager/issues/new?template=feature_request.yml).
+- Real-device Windows and Android results are particularly valuable; state the tested version and what remains unverified.
+- Maintainer automation is intentionally narrow and auditable. See the [verifiable automation plan](docs/maintainer-automation-plan.md) for proposed PR review, IPC/LAN security, dependency, and dual-platform release-QA workflows.
 
 ---
 

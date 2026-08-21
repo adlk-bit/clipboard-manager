@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { HistoryItem, StickerItem, PageView, HistoryStats } from '../types'
+import type { AppLanguage } from '../lib/i18n'
 
 interface AppState {
   // Navigation
@@ -32,6 +33,7 @@ interface AppState {
   // Settings
   retentionDays: string
   darkMode: boolean
+  language: AppLanguage
   hotkey: string
   monitorPaused: boolean
   maxHistoryItems: string
@@ -39,6 +41,7 @@ interface AppState {
   historyStats: HistoryStats
   setRetentionDays: (days: string) => void
   setDarkMode: (on: boolean) => void
+  setLanguage: (language: AppLanguage) => void
   setHotkey: (hotkey: string) => void
   setMonitorPaused: (paused: boolean) => void
   toggleMonitorPaused: () => Promise<void>
@@ -149,6 +152,7 @@ export const useStore = create<AppState>((set, get) => ({
   // Settings
   retentionDays: '3',
   darkMode: false,
+  language: 'zh-CN',
   hotkey: 'Ctrl+Shift+V',
   monitorPaused: false,
   maxHistoryItems: '500',
@@ -156,6 +160,7 @@ export const useStore = create<AppState>((set, get) => ({
   historyStats: { itemCount: 0, imageBytes: 0 },
   setRetentionDays: (days) => set({ retentionDays: days }),
   setDarkMode: (on) => set({ darkMode: on }),
+  setLanguage: (language) => set({ language }),
   setHotkey: (hotkey) => set({ hotkey }),
   setMonitorPaused: (paused) => set({ monitorPaused: paused }),
   toggleMonitorPaused: async () => {
@@ -190,12 +195,14 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const retention = await window.api.getSetting('retention_days')
       const darkMode = await window.api.getSetting('dark_mode')
+      const language = await window.api.getSetting('language')
       const hotkey = await window.api.getSetting('hotkey')
       const maxHistoryItems = await window.api.getSetting('max_history_items')
       const maxImageSizeMb = await window.api.getSetting('max_image_size_mb')
       set({
         retentionDays: retention || '3',
         darkMode: darkMode === 'true',
+        language: language === 'en' ? 'en' : 'zh-CN',
         hotkey: hotkey || 'Ctrl+Shift+V',
         maxHistoryItems: maxHistoryItems || '500',
         maxImageSizeMb: maxImageSizeMb || '10'

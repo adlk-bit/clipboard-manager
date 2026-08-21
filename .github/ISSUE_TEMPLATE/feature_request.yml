@@ -1,0 +1,55 @@
+name: Feature request / 功能建议
+description: Propose a focused, testable improvement / 提出范围明确、可验证的改进
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / 问题
+      description: What workflow is difficult today? Please use a concrete example instead of popularity claims.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior / 建议行为
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface / 端
+      options:
+        - Windows desktop
+        - Android companion
+        - Phone pairing web page
+        - Cross-platform
+        - Documentation or contributor tooling
+    validations:
+      required: true
+
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy and security impact / 隐私与安全影响
+      description: Note any new data collection, storage, IPC, network, permission, or pairing behavior. Write “None identified” if not applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: How could this be verified? / 如何验证
+      description: Suggest tests, screenshots, runtime checks, or real-device evidence.
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution / 贡献
+      options:
+        - label: I may be able to test this change on Windows.
+        - label: I may be able to test this change on an Android device.
+        - label: I may be able to open a focused pull request.

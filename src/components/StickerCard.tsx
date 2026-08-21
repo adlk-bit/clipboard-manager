@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { StickerItem } from '../types'
 import { useStore } from '../stores/useStore'
 import Icon from './Icon'
+import { useI18n } from '../lib/i18n'
 
 interface StickerCardProps {
   sticker: StickerItem
@@ -9,6 +10,7 @@ interface StickerCardProps {
 }
 
 export default function StickerCard({ sticker, onCopy }: StickerCardProps) {
+  const { t } = useI18n()
   const [showDelete, setShowDelete] = useState(false)
   const [copied, setCopied] = useState(false)
   const loadStickers = useStore((s) => s.loadStickers)
@@ -18,7 +20,7 @@ export default function StickerCard({ sticker, onCopy }: StickerCardProps) {
   const handleSend = async () => {
     setCopied(true)
     const result = await window.api.sendSticker(sticker.id)
-    onCopy(result.success ? '贴图已复制到剪贴板' : '贴图复制失败')
+    onCopy(result.success ? t('stickers.copied') : t('stickers.copyFailed'))
     setTimeout(() => setCopied(false), 800)
   }
 
@@ -55,9 +57,9 @@ export default function StickerCard({ sticker, onCopy }: StickerCardProps) {
       {showDelete && !copied && (
         <button
           onClick={handleDelete}
-          aria-label="删除贴图"
+          aria-label={t('stickers.delete')}
           className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-md bg-black/60 text-white transition-colors hover:bg-red-600"
-          title="删除贴图"
+          title={t('stickers.delete')}
         >
           <Icon name="x" size={13} />
         </button>

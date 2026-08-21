@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report / 私密安全报告
+    url: https://github.com/adlk-bit/clipboard-manager/security/advisories/new
+    about: Report vulnerabilities privately; do not include secrets in a public Issue.
+  - name: Questions and usage help / 使用问题
+    url: https://github.com/adlk-bit/clipboard-manager/issues/new?template=bug_report.yml
+    about: Use the bug template and select Documentation when the expected behavior is unclear.
