@@ -131,23 +131,28 @@ function createWindow() {
 function refreshTrayMenu() {
   if (!tray) return
   const paused = isMonitorPaused()
-  tray.setToolTip(paused ? '剪贴板管理器（记录已暂停）' : '剪贴板管理器')
+  const english = getSetting('language') === 'en'
+  tray.setToolTip(paused
+    ? (english ? 'Clipboard Manager (capture paused)' : '剪贴板管理器（记录已暂停）')
+    : (english ? 'Clipboard Manager' : '剪贴板管理器'))
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: '打开主窗口',
+      label: english ? 'Open main window' : '打开主窗口',
       click: () => {
         showWindow()
       }
     },
     {
-      label: paused ? '恢复记录' : '暂停记录',
+      label: paused
+        ? (english ? 'Resume capture' : '恢复记录')
+        : (english ? 'Pause capture' : '暂停记录'),
       type: 'checkbox',
       checked: paused,
       click: (menuItem) => applyMonitorPaused(menuItem.checked)
     },
     { type: 'separator' },
     {
-      label: '退出',
+      label: english ? 'Quit' : '退出',
       click: () => {
         app.exit(0)
       }
@@ -250,8 +255,9 @@ export function hideWindow() {
 
 export function updateGlobalShortcut(rawHotkey: string): { success: boolean; hotkey?: string; error?: string } {
   const hotkey = rawHotkey.trim()
+  const english = getSetting('language') === 'en'
   if (!isSupportedHotkey(hotkey)) {
-    return { success: false, error: '快捷键格式无效，请至少组合一个修饰键和一个按键。' }
+    return { success: false, error: english ? 'Invalid shortcut. Combine a modifier with another key.' : '快捷键格式无效，请至少组合一个修饰键和一个按键。' }
   }
 
   const previousHotkey = registeredHotkey
@@ -261,7 +267,7 @@ export function updateGlobalShortcut(rawHotkey: string): { success: boolean; hot
     const registered = globalShortcut.register(hotkey, showWindow)
     if (!registered) {
       if (previousHotkey) globalShortcut.register(previousHotkey, showWindow)
-      return { success: false, error: '该快捷键已被其他应用占用。' }
+      return { success: false, error: english ? 'This shortcut is already used by another app.' : '该快捷键已被其他应用占用。' }
     }
 
     registeredHotkey = hotkey
@@ -275,7 +281,7 @@ export function updateGlobalShortcut(rawHotkey: string): { success: boolean; hot
         console.error('Failed to restore previous global shortcut:', restoreError)
       }
     }
-    return { success: false, error: '无法注册该快捷键。' }
+    return { success: false, error: english ? 'Could not register this shortcut.' : '无法注册该快捷键。' }
   }
 }
 
@@ -317,7 +323,11 @@ app.whenReady().then(async () => {
         // clipboard history.
         markClipboardHistoryItemCopied({ type: 'text', content: text })
         if (Notification.isSupported()) {
-          new Notification({ title: '验证码已复制', body: '来自手机的六位验证码已进入电脑剪贴板。' }).show()
+          const english = getSetting('language') === 'en'
+          new Notification({
+            title: english ? 'Verification code copied' : '验证码已复制',
+            body: english ? 'The six-digit code from your phone is ready in the computer clipboard.' : '来自手机的六位验证码已进入电脑剪贴板。',
+          }).show()
         }
       }
       return success
@@ -330,7 +340,7 @@ app.whenReady().then(async () => {
   setMobileSyncService(mobileSyncService)
 
   // Register IPC handlers
-  registerIpcHandlers(updateGlobalShortcut, hideWindow, applyMonitorPaused)
+  registerIpcHandlers(updateGlobalShortcut, hideWindow, applyMonitorPaused, refreshTrayMenu)
 
   // Create UI
   createWindow()

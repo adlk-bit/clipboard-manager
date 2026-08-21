@@ -193,6 +193,7 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
   if (!getSetting('retention_days')) setSetting('retention_days', '3')
   if (!getSetting('hotkey')) setSetting('hotkey', 'Ctrl+Shift+V')
   if (!getSetting('dark_mode')) setSetting('dark_mode', 'false')
+  if (!getSetting('language')) setSetting('language', 'zh-CN')
   if (!getSetting('max_history_items')) setSetting('max_history_items', '500')
   if (!getSetting('max_image_size_mb')) setSetting('max_image_size_mb', '10')
   if (!getSetting('monitor_paused')) setSetting('monitor_paused', 'false')
@@ -561,7 +562,7 @@ export function deleteSticker(id: number): void {
   saveDb()
 }
 
-const PORTABLE_SETTING_KEYS = ['retention_days', 'dark_mode', 'max_history_items', 'max_image_size_mb', 'monitor_paused'] as const
+const PORTABLE_SETTING_KEYS = ['retention_days', 'dark_mode', 'language', 'max_history_items', 'max_image_size_mb', 'monitor_paused'] as const
 
 export function getBackupSnapshot(): BackupSnapshot {
   const historyStmt = db.prepare('SELECT * FROM clipboard_history ORDER BY id ASC')
@@ -607,6 +608,7 @@ function removeFiles(filePaths: Iterable<string>): void {
 
 function validatedPortableSetting(key: string, value: string): string | null {
   if (key === 'dark_mode') return value === 'true' ? 'true' : value === 'false' ? 'false' : null
+  if (key === 'language') return value === 'en' ? 'en' : value === 'zh-CN' ? 'zh-CN' : null
   if (key === 'retention_days') return ['0', '1', '3', '5'].includes(value) ? value : null
   if (key === 'max_history_items') return ['100', '300', '500', '1000'].includes(value) ? value : null
   if (key === 'max_image_size_mb') return ['1', '5', '10', '20'].includes(value) ? value : null

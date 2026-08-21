@@ -1,17 +1,19 @@
 import { useStore } from '../stores/useStore'
 import type { PageView } from '../types'
 import Icon, { type IconName } from './Icon'
+import { useI18n } from '../lib/i18n'
 
-const navItems: { id: PageView; label: string; icon: IconName }[] = [
-  { id: 'all', label: '全部记录', icon: 'clipboard' },
-  { id: 'favorites', label: '收藏', icon: 'star' },
-  { id: 'emoji', label: 'Emoji', icon: 'smile' },
-  { id: 'stickers', label: '贴图库', icon: 'image' },
-  { id: 'devices', label: '连接设备', icon: 'devices' },
-  { id: 'settings', label: '设置', icon: 'settings' },
+const navItems: { id: PageView; icon: IconName }[] = [
+  { id: 'all', icon: 'clipboard' },
+  { id: 'favorites', icon: 'star' },
+  { id: 'emoji', icon: 'smile' },
+  { id: 'stickers', icon: 'image' },
+  { id: 'devices', icon: 'devices' },
+  { id: 'settings', icon: 'settings' },
 ]
 
 export default function Sidebar() {
+  const { t } = useI18n()
   const currentPage = useStore((s) => s.currentPage)
   const setCurrentPage = useStore((s) => s.setCurrentPage)
 
@@ -22,8 +24,8 @@ export default function Sidebar() {
           key={item.id}
           type="button"
           onClick={() => setCurrentPage(item.id)}
-          aria-label={item.label}
-          title={item.label}
+          aria-label={t(`nav.${item.id}`)}
+          title={t(`nav.${item.id}`)}
           className={`no-drag relative flex size-10 items-center justify-center rounded-lg transition-colors duration-100 ${
             currentPage === item.id
               ? 'bg-white text-[#006bd6] shadow-sm dark:bg-white/10 dark:text-[#53a9ff]'

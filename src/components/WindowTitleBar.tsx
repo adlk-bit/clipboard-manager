@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import Icon from './Icon'
+import { useI18n } from '../lib/i18n'
 
 export default function WindowTitleBar() {
+  const { t } = useI18n()
   const [isMaximized, setIsMaximized] = useState(false)
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export default function WindowTitleBar() {
           C
         </div>
         <span className="truncate text-[11px] font-medium text-[#48484d] dark:text-[#d1d1d6]">
-          剪贴板管理器
+          {t('app.name')}
         </span>
       </div>
 
@@ -40,8 +42,8 @@ export default function WindowTitleBar() {
         <button
           type="button"
           className="window-control-button"
-          aria-label="最小化"
-          title="最小化"
+          aria-label={t('window.minimize')}
+          title={t('window.minimize')}
           onClick={() => window.api.minimizeWindow()}
         >
           <Icon name="window-minimize" size={12} />
@@ -49,8 +51,8 @@ export default function WindowTitleBar() {
         <button
           type="button"
           className="window-control-button"
-          aria-label={isMaximized ? '还原' : '最大化'}
-          title={isMaximized ? '还原' : '最大化'}
+          aria-label={isMaximized ? t('window.restore') : t('window.maximize')}
+          title={isMaximized ? t('window.restore') : t('window.maximize')}
           onClick={toggleMaximize}
         >
           <Icon name={isMaximized ? 'window-restore' : 'window-maximize'} size={12} />
@@ -58,8 +60,8 @@ export default function WindowTitleBar() {
         <button
           type="button"
           className="window-control-button window-close-button"
-          aria-label="关闭到托盘"
-          title="关闭到托盘"
+          aria-label={t('window.closeToTray')}
+          title={t('window.closeToTray')}
           onClick={() => window.api.closeWindow()}
         >
           <Icon name="x" size={13} />

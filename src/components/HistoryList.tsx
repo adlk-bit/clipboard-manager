@@ -2,6 +2,7 @@ import { useStore } from '../stores/useStore'
 import type { HistoryItem } from '../types'
 import HistoryCard from './HistoryCard'
 import Icon from './Icon'
+import { useI18n } from '../lib/i18n'
 
 interface HistoryListProps {
   onCopy: (msg: string) => void
@@ -9,6 +10,7 @@ interface HistoryListProps {
 }
 
 export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
+  const { t } = useI18n()
   const historyItems = useStore((s) => s.historyItems)
   const setConfirmClearAll = useStore((s) => s.setConfirmClearAll)
   const currentPage = useStore((s) => s.currentPage)
@@ -58,10 +60,10 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
               onClick={handleSelectAll}
               className="text-xs font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
             >
-              {allSelected ? '取消全选' : '全选'}
+              {allSelected ? t('history.deselectAll') : t('history.selectAll')}
             </button>
             <span className="text-xs text-primary-400 dark:text-primary-500">
-              已选 {selectedIds.size} 项
+              {t('history.selected', { count: selectedIds.size })}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -72,7 +74,7 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
               }}
               className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-black/[0.05] hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
             >
-              取消
+              {t('common.cancel')}
             </button>
             <button
               onClick={() => {
@@ -87,7 +89,7 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
               }`}
             >
-              删除选中
+              {t('history.deleteSelected')}
             </button>
           </div>
         </div>
@@ -100,24 +102,24 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
               onClick={() => setHistorySort('recent')}
               className={`rounded px-2.5 py-1 text-[10px] font-medium transition-colors ${historySort === 'recent' ? 'bg-white text-[#006bd6] shadow-sm dark:bg-white/10 dark:text-[#53a9ff]' : 'text-[#6b6b70] hover:text-[#29292d] dark:text-[#a6a6ab] dark:hover:text-white'}`}
             >
-              最新
+              {t('history.recent')}
             </button>
             <button
               onClick={() => setHistorySort('frequent')}
               className={`rounded px-2.5 py-1 text-[10px] font-medium transition-colors ${historySort === 'frequent' ? 'bg-white text-[#006bd6] shadow-sm dark:bg-white/10 dark:text-[#53a9ff]' : 'text-[#6b6b70] hover:text-[#29292d] dark:text-[#a6a6ab] dark:hover:text-white'}`}
             >
-              常用
+              {t('history.frequent')}
             </button>
           </div>
           <button
             type="button"
             onClick={toggleMonitorPaused}
             aria-pressed={monitorPaused}
-            title={monitorPaused ? '恢复自动记录' : '暂停自动记录'}
+            title={monitorPaused ? t('history.resumeAuto') : t('history.pauseAuto')}
             className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${monitorPaused ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/20 dark:text-amber-300' : 'text-[#626267] hover:bg-black/[0.05] dark:text-[#aaaab0] dark:hover:bg-white/[0.08]'}`}
           >
             <Icon name={monitorPaused ? 'play' : 'pause'} size={12} />
-            {monitorPaused ? '恢复记录' : '暂停记录'}
+            {monitorPaused ? t('history.resume') : t('history.pause')}
           </button>
         </div>
       )}
@@ -131,18 +133,18 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
             </div>
             <p className="max-w-[240px] text-center text-xs leading-5">
               {searchQuery
-                ? '没有匹配的记录'
+                ? t('history.emptySearch')
                 : currentPage === 'favorites'
-                ? '还没有收藏任何记录'
+                ? t('history.emptyFavorites')
                 : monitorPaused
-                ? '记录已暂停，恢复后会继续收集新复制内容'
-                : '还没有复制记录，试试复制一些内容吧'}
+                ? t('history.emptyPaused')
+                : t('history.empty')}
             </p>
           </div>
         )}
         {currentPage === 'favorites' && !selectionMode && (
           <div className="no-drag flex gap-1 overflow-x-auto pb-1">
-            <button onClick={() => setFavoriteFolder('')} className={`shrink-0 rounded px-2 py-1 text-[10px] ${favoriteFolder === '' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>全部</button>
+            <button onClick={() => setFavoriteFolder('')} className={`shrink-0 rounded px-2 py-1 text-[10px] ${favoriteFolder === '' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>{t('history.all')}</button>
             {favoriteFolders.map((folder) => (
               <button key={folder} onClick={() => setFavoriteFolder(folder)} className={`shrink-0 rounded px-2 py-1 text-[10px] ${favoriteFolder === folder ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>{folder}</button>
             ))}
@@ -150,13 +152,13 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
         )}
 
         {pinnedFavorites.length > 0 && (
-          <div className="pt-1 text-[10px] font-medium text-primary-500 dark:text-primary-400">置顶收藏</div>
+          <div className="pt-1 text-[10px] font-medium text-primary-500 dark:text-primary-400">{t('history.pinnedFavorites')}</div>
         )}
         {pinnedFavorites.map((item) => (
           <HistoryCard key={item.id} item={item} onCopy={onCopy} onEdit={onEdit} />
         ))}
         {pinnedFavorites.length > 0 && regularItems.length > 0 && (
-          <div className="pt-2 text-[10px] font-medium text-gray-400 dark:text-gray-500">全部收藏</div>
+          <div className="pt-2 text-[10px] font-medium text-gray-400 dark:text-gray-500">{t('history.allFavorites')}</div>
         )}
         {regularItems.map((item) => (
           <HistoryCard key={item.id} item={item} onCopy={onCopy} onEdit={onEdit} />
@@ -168,13 +170,13 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
               onClick={handleToggleSelectionMode}
               className="no-drag rounded px-2 py-1.5 text-[11px] text-primary-500 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-primary-400 dark:hover:bg-primary-900/20"
             >
-              批量管理
+              {t('history.batchManage')}
             </button>
             <button
               onClick={() => setConfirmClearAll(true)}
               className="no-drag rounded px-2 py-1.5 text-[11px] text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-gray-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
             >
-              清空全部记录
+              {t('history.clearAll')}
             </button>
           </div>
         )}

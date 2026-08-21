@@ -12,8 +12,10 @@ import EditCopyDialog from './components/EditCopyDialog'
 import Toast from './components/Toast'
 import { useStore } from './stores/useStore'
 import type { HistoryItem } from './types'
+import { useI18n } from './lib/i18n'
 
 export default function App() {
+  const { t } = useI18n()
   const currentPage = useStore((s) => s.currentPage)
   const loadHistory = useStore((s) => s.loadHistory)
   const loadSettings = useStore((s) => s.loadSettings)
@@ -105,12 +107,7 @@ export default function App() {
         {/* Header */}
         <div className="app-header drag-region flex h-11 shrink-0 items-center justify-between gap-2 border-b border-[#e2e2e6] bg-white px-3 dark:border-white/10 dark:bg-[#242427]">
           <h1 className="no-drag truncate text-sm font-semibold text-[#242428] dark:text-[#f5f5f7]">
-            {currentPage === 'all' && '剪贴板历史'}
-            {currentPage === 'favorites' && '收藏记录'}
-            {currentPage === 'emoji' && 'Emoji'}
-            {currentPage === 'stickers' && '贴图库'}
-            {currentPage === 'devices' && '连接设备'}
-            {currentPage === 'settings' && '设置'}
+            {t(`page.${currentPage}`)}
           </h1>
           {(currentPage === 'all' || currentPage === 'favorites') && (
             <div className="no-drag">
