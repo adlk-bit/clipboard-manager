@@ -208,4 +208,4 @@ nsis:
 
 ## 📄 License
 
-MIT
+The source code of this project is released under the [MIT License](LICENSE). You may use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software, provided that the original copyright notice and license notice are retained. See [LICENSE](LICENSE) for the full license text.
