@@ -53,8 +53,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download:
 
-- Windows: `ClipboardManager-Setup-1.1.0.exe`; run it to install.
-- Android: `ClipboardManager-Android-1.1.0.apk`; allow your browser or file manager to install unknown apps, then install it.
+- Windows: `ClipboardManager-Setup-1.1.1.exe`; run it to install.
+- Android: `ClipboardManager-Android-1.1.1.apk`; allow your browser or file manager to install unknown apps, then install it.
 
 ### Build from Source
 
@@ -95,7 +95,14 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 
 ---
 
-## 🆕 What's New in v1.1.0
+## 🆕 What's New in v1.1.1
+
+- Fixed the dark-mode switch direction so the thumb consistently follows the selected state; the phone verification-code switch now uses the same geometry.
+- Added a persistent Simplified Chinese / English selector in Settings and localized the complete desktop interface, tray menu, dialogs, and native prompts.
+- Added GitHub Actions for desktop tests, TypeScript checking, production builds, Android unit tests, and Android lint.
+- Added security and contribution policies, Issue/PR templates, a real runtime screenshot, architecture notes, a privacy threat model, and a maintainer automation proposal.
+
+## What's New in v1.1.0
 
 - Added **Connected Devices** to the sidebar, with LAN-interface selection, five-minute pairing QR codes, and controls to inspect, configure, or revoke paired iPhone and Android devices.
 - Added bidirectional phone-to-Windows text transfer: iPhone uses the pairing web page and Android uses the open-source Kotlin companion; normal clipboard actions remain explicitly user initiated on the phone.

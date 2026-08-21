@@ -53,8 +53,8 @@
 
 前往 [Releases](https://github.com/adlk-bit/clipboard-manager/releases) 下载：
 
-- Windows：`ClipboardManager-Setup-1.1.0.exe`，双击运行安装。
-- Android：`ClipboardManager-Android-1.1.0.apk`，允许浏览器或文件管理器“安装未知应用”后安装。
+- Windows：`ClipboardManager-Setup-1.1.1.exe`，双击运行安装。
+- Android：`ClipboardManager-Android-1.1.1.apk`，允许浏览器或文件管理器“安装未知应用”后安装。
 
 ### 从源码运行
 
@@ -95,7 +95,14 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 
 ---
 
-## 🆕 v1.1.0 更新内容
+## 🆕 v1.1.1 更新内容
+
+- 修正深色模式拨钮方向，使滑块位置始终与选中状态一致；手机验证码开关同步采用相同的拨钮结构。
+- 在设置中新增可持久化的简体中文 / English 切换，并完成桌面界面、托盘菜单、对话框和原生提示的中英文本地化。
+- 新增 GitHub Actions，持续验证桌面测试、TypeScript 检查、生产构建、Android 单元测试与 lint。
+- 新增安全与贡献指南、Issue/PR 模板、真实运行截图、架构说明、隐私威胁模型及维护自动化用途说明。
+
+## v1.1.0 更新内容
 
 - 左侧栏新增「连接设备」模块，可选择电脑局域网地址、生成 5 分钟有效的配对二维码，并查看、控制或撤销已连接的 iPhone 与 Android 设备。
 - 新增手机与 Windows 双向文字传输：iPhone 使用扫码网页，Android 使用开源 Kotlin 配套应用；普通剪贴板传输由手机端明确操作触发。
