@@ -1,19 +1,22 @@
 appId: com.clipboard.manager
 productName: ClipboardManager
 artifactName: ${productName}-Setup-${version}.${ext}
+compression: maximum
 directories:
   buildResources: resources
   output: dist
 files:
-  - out
-  - resources
-  # The renderer is bundled by Vite. The main process only loads sql.js' Node
-  # entry point, so omit the unused production packages and sql.js debug/browser
-  # builds that would otherwise inflate app.asar.
+  # TypeScript can leave duplicate source/declaration output beside the three
+  # electron-vite runtime bundles. Package only those runtime directories.
+  - out/main
+  - out/preload
+  - out/renderer
+  - resources/tray-icon.png
+  # The main process only loads sql.js' Node entry point. Keep that entry and
+  # omit the package's unused debug/browser builds and all other dependencies.
   - "!node_modules/**"
   - node_modules/sql.js/package.json
   - node_modules/sql.js/dist/sql-wasm.js
-  - "!out/*.tsbuildinfo"
 electronLanguages:
   - en-US
   - zh-CN

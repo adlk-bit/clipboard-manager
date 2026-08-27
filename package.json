@@ -1,6 +1,6 @@
 {
   "name": "clipboard-manager",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Windows 剪贴板历史管理工具",
   "main": "./out/main/index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "preview": "electron-vite preview",
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-vite build && electron-builder --win -c.electronDist=node_modules/electron/dist -c.electronVersion=43.1.1"
+    "dist": "electron-vite build && electron-builder --win"
   },
   "keywords": [
     "clipboard",
@@ -33,7 +33,6 @@
     "@types/sql.js": "^1.4.9",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.5.4",
-    "concurrently": "^10.0.3",
     "electron": "^43.1.1",
     "electron-builder": "^26.15.3",
     "electron-vite": "^3.1.0",

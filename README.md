@@ -53,8 +53,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download:
 
-- Windows: `ClipboardManager-Setup-1.1.1.exe`; run it to install.
-- Android: `ClipboardManager-Android-1.1.1.apk`; allow your browser or file manager to install unknown apps, then install it.
+- Windows: `ClipboardManager-Setup-1.1.2.exe`; run it to install.
+- Android: `ClipboardManager-Android-1.1.2.apk`; allow your browser or file manager to install unknown apps, then install it.
 
 ### Build from Source
 
@@ -95,7 +95,14 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 
 ---
 
-## 🆕 What's New in v1.1.1
+## 🆕 What's New in v1.1.2
+
+- Reduced packaged runtime duplication by allowing only the electron-vite main, preload, and renderer bundles into `app.asar`; no clipboard, backup, phone-sync, or UI feature was removed.
+- Excluded build-only icons and stale TypeScript output, removed the unused `concurrently` development dependency, and enabled maximum installer compression.
+- Reduced `app.asar` from 1,020,023 to 630,444 bytes (38.2%), the Windows installer from 91,989,366 to 91,789,554 bytes (0.22%), and the unpacked application from 318,207,742 to 317,707,084 bytes (0.16%) compared with v1.1.1.
+- Simplified the release build to use electron-builder's standard Electron packaging path, which omits the redundant Electron default-app payload.
+
+## What's New in v1.1.1
 
 - Fixed the dark-mode switch direction so the thumb consistently follows the selected state; the phone verification-code switch now uses the same geometry.
 - Added a persistent Simplified Chinese / English selector in Settings and localized the complete desktop interface, tray menu, dialogs, and native prompts.

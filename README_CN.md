@@ -53,8 +53,8 @@
 
 前往 [Releases](https://github.com/adlk-bit/clipboard-manager/releases) 下载：
 
-- Windows：`ClipboardManager-Setup-1.1.1.exe`，双击运行安装。
-- Android：`ClipboardManager-Android-1.1.1.apk`，允许浏览器或文件管理器“安装未知应用”后安装。
+- Windows：`ClipboardManager-Setup-1.1.2.exe`，双击运行安装。
+- Android：`ClipboardManager-Android-1.1.2.apk`，允许浏览器或文件管理器“安装未知应用”后安装。
 
 ### 从源码运行
 
@@ -95,7 +95,14 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 
 ---
 
-## 🆕 v1.1.1 更新内容
+## 🆕 v1.1.2 更新内容
+
+- 将 `app.asar` 严格限制为 electron-vite 生成的主进程、预加载和渲染进程运行包，清除重复转译代码；剪贴板、备份、手机同步和界面功能均未删除。
+- 排除仅构建期使用的图标和残留 TypeScript 输出，移除未使用的 `concurrently` 开发依赖，并启用安装包最高压缩级别。
+- 相比 v1.1.1，`app.asar` 从 1,020,023 字节降至 630,444 字节（减少 38.2%），Windows 安装包从 91,989,366 字节降至 91,789,554 字节（减少 0.22%），解包后的应用从 318,207,742 字节降至 317,707,084 字节（减少 0.16%）。
+- 发布构建改用 electron-builder 的标准 Electron 打包路径，避免带入冗余的 Electron 默认应用载荷。
+
+## v1.1.1 更新内容
 
 - 修正深色模式拨钮方向，使滑块位置始终与选中状态一致；手机验证码开关同步采用相同的拨钮结构。
 - 在设置中新增可持久化的简体中文 / English 切换，并完成桌面界面、托盘菜单、对话框和原生提示的中英文本地化。
