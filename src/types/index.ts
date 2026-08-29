@@ -94,6 +94,8 @@ export interface ElectronApi {
   minimizeWindow: () => Promise<void>
   toggleMaximizeWindow: (isMaximized: boolean) => Promise<boolean>
   isWindowMaximized: () => Promise<boolean>
+  getWindowAlwaysOnTop: () => Promise<boolean>
+  setWindowAlwaysOnTop: (enabled: boolean) => Promise<boolean>
   closeWindow: () => Promise<void>
   onWindowMaximizedChanged: (callback: (isMaximized: boolean) => void) => () => void
   getHistoryStats: () => Promise<HistoryStats>

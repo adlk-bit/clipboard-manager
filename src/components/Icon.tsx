@@ -9,6 +9,8 @@ export type IconName =
   | 'download'
   | 'devices'
   | 'edit'
+  | 'eye'
+  | 'eye-off'
   | 'folder'
   | 'image'
   | 'link'
@@ -53,6 +55,10 @@ export default function Icon({ name, size = 16, ...props }: IconProps) {
         return <><rect x="7" y="2.5" width="10" height="19" rx="2" /><path d="M10 5h4M11 18.5h2" /><path d="M4 8H2.5v8H4M20 8h1.5v8H20" /></>
       case 'edit':
         return <><path d="M4 20h4l11-11-4-4L4 16Z" /><path d="m13.5 6.5 4 4M4 20h16" /></>
+      case 'eye':
+        return <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></>
+      case 'eye-off':
+        return <><path d="m3 3 18 18" /><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6 0 9.5 6 9.5 6a16.7 16.7 0 0 1-2.2 2.8M6.2 6.2C3.9 7.7 2.5 12 2.5 12s3.5 6 9.5 6a9.7 9.7 0 0 0 3-.5" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></>
       case 'folder':
         return <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5Z" />
       case 'image':

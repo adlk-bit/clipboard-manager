@@ -2,8 +2,13 @@ import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 
+export function getAppUserDataDir(): string {
+  const override = process.env.CLIPBOARD_MANAGER_USER_DATA_DIR?.trim()
+  return override ? path.resolve(override) : app.getPath('userData')
+}
+
 function ensureDirectory(name: 'images' | 'stickers'): string {
-  const directory = path.join(app.getPath('userData'), name)
+  const directory = path.join(getAppUserDataDir(), name)
   fs.mkdirSync(directory, { recursive: true })
   return directory
 }

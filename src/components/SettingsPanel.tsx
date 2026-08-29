@@ -8,12 +8,14 @@ export default function SettingsPanel() {
   const { language, t } = useI18n()
   const retentionDays = useStore((s) => s.retentionDays)
   const darkMode = useStore((s) => s.darkMode)
+  const sensitivePreview = useStore((s) => s.sensitivePreview)
   const hotkey = useStore((s) => s.hotkey)
   const maxHistoryItems = useStore((s) => s.maxHistoryItems)
   const maxImageSizeMb = useStore((s) => s.maxImageSizeMb)
   const historyStats = useStore((s) => s.historyStats)
   const setRetentionDays = useStore((s) => s.setRetentionDays)
   const setDarkMode = useStore((s) => s.setDarkMode)
+  const setSensitivePreview = useStore((s) => s.setSensitivePreview)
   const setLanguage = useStore((s) => s.setLanguage)
   const setHotkey = useStore((s) => s.setHotkey)
   const setMaxHistoryItems = useStore((s) => s.setMaxHistoryItems)
@@ -42,6 +44,11 @@ export default function SettingsPanel() {
   const handleDarkModeChange = (on: boolean) => {
     setDarkMode(on)
     saveSettings('dark_mode', on ? 'true' : 'false')
+  }
+
+  const handleSensitivePreviewChange = (on: boolean) => {
+    setSensitivePreview(on)
+    saveSettings('sensitive_preview', on ? 'true' : 'false')
   }
 
   const handleLanguageChange = (nextLanguage: AppLanguage) => {
@@ -113,6 +120,11 @@ export default function SettingsPanel() {
           <SettingToggle title={t('settings.darkMode')} description={t('settings.darkModeHint')} enabled={darkMode} onChange={handleDarkModeChange} />
           <LanguageSetting language={language} onChange={handleLanguageChange} t={t} />
         </div>
+      </div>
+
+      <div>
+        <h3 className="mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200">{t('settings.privacy')}</h3>
+        <SettingToggle title={t('settings.sensitivePreview')} description={t('settings.sensitivePreviewHint')} enabled={sensitivePreview} onChange={handleSensitivePreviewChange} />
       </div>
 
       <div>

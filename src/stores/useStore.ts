@@ -33,6 +33,7 @@ interface AppState {
   // Settings
   retentionDays: string
   darkMode: boolean
+  sensitivePreview: boolean
   language: AppLanguage
   hotkey: string
   monitorPaused: boolean
@@ -41,6 +42,7 @@ interface AppState {
   historyStats: HistoryStats
   setRetentionDays: (days: string) => void
   setDarkMode: (on: boolean) => void
+  setSensitivePreview: (on: boolean) => void
   setLanguage: (language: AppLanguage) => void
   setHotkey: (hotkey: string) => void
   setMonitorPaused: (paused: boolean) => void
@@ -152,6 +154,7 @@ export const useStore = create<AppState>((set, get) => ({
   // Settings
   retentionDays: '3',
   darkMode: false,
+  sensitivePreview: true,
   language: 'zh-CN',
   hotkey: 'Ctrl+Shift+V',
   monitorPaused: false,
@@ -160,6 +163,7 @@ export const useStore = create<AppState>((set, get) => ({
   historyStats: { itemCount: 0, imageBytes: 0 },
   setRetentionDays: (days) => set({ retentionDays: days }),
   setDarkMode: (on) => set({ darkMode: on }),
+  setSensitivePreview: (on) => set({ sensitivePreview: on }),
   setLanguage: (language) => set({ language }),
   setHotkey: (hotkey) => set({ hotkey }),
   setMonitorPaused: (paused) => set({ monitorPaused: paused }),
@@ -195,6 +199,7 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const retention = await window.api.getSetting('retention_days')
       const darkMode = await window.api.getSetting('dark_mode')
+      const sensitivePreview = await window.api.getSetting('sensitive_preview')
       const language = await window.api.getSetting('language')
       const hotkey = await window.api.getSetting('hotkey')
       const maxHistoryItems = await window.api.getSetting('max_history_items')
@@ -202,6 +207,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({
         retentionDays: retention || '3',
         darkMode: darkMode === 'true',
+        sensitivePreview: sensitivePreview !== 'false',
         language: language === 'en' ? 'en' : 'zh-CN',
         hotkey: hotkey || 'Ctrl+Shift+V',
         maxHistoryItems: maxHistoryItems || '500',

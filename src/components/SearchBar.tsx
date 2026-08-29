@@ -16,7 +16,7 @@ export default function SearchBar() {
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder={t('search.placeholder')}
         aria-label={t('search.placeholder')}
-        className="no-drag h-7 w-36 rounded-md border border-[#d8d8dd] bg-white pl-7 pr-7 text-xs text-[#333338] placeholder-[#929298] outline-none transition-colors focus:border-[#1683d8] dark:border-white/10 dark:bg-white/[0.07] dark:text-[#f2f2f4] dark:focus:border-[#53a9ff]"
+        className="no-drag h-7 w-44 rounded-md border border-[#d8d8dd] bg-white pl-7 pr-7 text-xs text-[#333338] placeholder-[#929298] outline-none transition-colors focus:border-[#1683d8] dark:border-white/10 dark:bg-white/[0.07] dark:text-[#f2f2f4] dark:focus:border-[#53a9ff]"
       />
       {searchQuery && (
         <button

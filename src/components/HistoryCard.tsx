@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, memo } from 'react'
+import { useEffect, useMemo, useRef, useState, memo } from 'react'
 import type { HistoryItem } from '../types'
 import { useStore } from '../stores/useStore'
 import { normalizeHttpUrl } from '../../shared/url'
 import Icon from './Icon'
 import { useI18n, type AppLanguage } from '../lib/i18n'
+import { maskSensitivePreview } from '../lib/sensitive-content'
 
 interface HistoryCardProps {
   item: HistoryItem
@@ -18,6 +19,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
   const [copied, setCopied] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState(false)
   const [choosingFolder, setChoosingFolder] = useState(false)
+  const [revealed, setRevealed] = useState(false)
   const [folder, setFolder] = useState(item.favorite_folder || '')
   const [tags, setTags] = useState(item.favorite_tags || '')
   const cardRef = useRef<HTMLDivElement>(null)
@@ -30,6 +32,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
   const toggleSelectId = useStore((s) => s.toggleSelectId)
   const favoriteFolders = useStore((s) => s.favoriteFolders)
   const keyboardActiveId = useStore((s) => s.keyboardActiveId)
+  const sensitivePreviewEnabled = useStore((s) => s.sensitivePreview)
 
   const isSelected = selectedIds.has(item.id)
   const isKeyboardActive = keyboardActiveId === item.id
@@ -41,6 +44,16 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
   const openableUrl = item.type === 'text' && item.content
     ? normalizeHttpUrl(item.content)
     : null
+  const sensitivePreview = useMemo(
+    () => maskSensitivePreview(item.type === 'text' ? item.content || '' : ''),
+    [item.type, item.content]
+  )
+  const contentIsMasked = sensitivePreviewEnabled && sensitivePreview.isSensitive && !revealed
+  const displayedContent = contentIsMasked ? sensitivePreview.text : item.content
+
+  useEffect(() => {
+    if (sensitivePreviewEnabled) setRevealed(false)
+  }, [sensitivePreviewEnabled, item.id])
 
   useEffect(() => {
     if (isKeyboardActive) {
@@ -151,10 +164,10 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
         )}
 
         {/* Content area */}
-        <div className={`min-w-0 ${item.type === 'text' && item.content ? 'pr-16' : 'pr-7'} ${selectionMode ? 'ml-6' : ''}`}>
+        <div className={`min-w-0 ${item.type === 'text' && item.content ? (sensitivePreviewEnabled && sensitivePreview.isSensitive ? 'pr-24' : 'pr-16') : 'pr-7'} ${selectionMode ? 'ml-6' : ''}`}>
           {item.type === 'text' ? (
             <p className="line-clamp-2 select-text whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#3a3a3c] dark:text-[#e5e5ea]">
-              {item.content}
+              {displayedContent}
             </p>
           ) : item.image_path ? (
             <div className="flex items-center gap-2.5">
@@ -224,6 +237,18 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
         {/* Primary actions - always visible (hidden in selection mode) */}
         {!selectionMode && (
           <div className="absolute right-2 top-2 flex items-center gap-1">
+            {item.type === 'text' && item.content && sensitivePreviewEnabled && sensitivePreview.isSensitive && (
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); setRevealed((value) => !value) }}
+                aria-label={revealed ? t('card.hideSensitive') : t('card.revealSensitive')}
+                aria-pressed={revealed}
+                title={revealed ? t('card.hideSensitive') : t('card.revealSensitive')}
+                className={`flex size-7 items-center justify-center rounded-md transition-colors duration-100 ${revealed ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-[#f1f1f3] text-[#77777d] hover:bg-[#e4f1fc] hover:text-[#006bd6] dark:bg-white/[0.07] dark:text-[#aaaab0] dark:hover:bg-[#0a84ff]/20 dark:hover:text-[#53a9ff]'}`}
+              >
+                <Icon name={revealed ? 'eye-off' : 'eye'} size={14} />
+              </button>
+            )}
             {item.type === 'text' && item.content && (
               <button
                 type="button"

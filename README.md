@@ -28,7 +28,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 | ♻️ **Smart Deduplication** | Identical text and images merge into one entry with a usage count and last-used time, keeping history compact |
 | 🔥 **Frequently Used View** | Switch between newest and most-used entries to reach recurring content faster |
 | 📌 **Organized Favorites** | Pin or favorite important entries, then add folders/tags and reorder favorites |
-| 🔍 **Live Search** | Fuzzy-match text content as you type, lightning fast |
+| 🔍 **Live Search** | Search text content, favorite folders, and tags as you type |
+| 👁️ **Sensitive Preview Masking** | Hide phone numbers, email addresses, IDs, valid bank cards, and common secrets in previews while preserving the original copied value |
 | 🔗 **Quick-Open URLs** | URL-only clipboard items can be opened safely in the default browser |
 | ✏️ **Edit Before Copy** | Edit any text entry in a focused dialog, then copy the revised content without overwriting the original history item |
 | 😀 **Emoji Picker** | Browse 233 built-in Emoji across seven categories, search in Chinese or English, and quickly reuse recent choices |
@@ -43,7 +44,7 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 | 🛡️ **Local Data Protection** | Atomic database snapshots, startup integrity repair, restricted local-asset access, CSP, and sandboxed rendering |
 | ⌨️ **Configurable Hotkey** | Record a new global shortcut directly in Settings; `Ctrl+Shift+V` is the default |
 | 📊 **Storage Controls** | Set history capacity and maximum clipboard-image size, then inspect current usage |
-| 🪟 **Native Window Controls** | Frameless system-style header with minimize, maximize/restore, and tray-safe close controls |
+| 🪟 **Native Window Controls** | Frameless system-style header with persistent always-on-top, minimize, maximize/restore, and tray-safe close controls |
 
 ---
 
@@ -53,8 +54,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download:
 
-- Windows: `ClipboardManager-Setup-1.1.2.exe`; run it to install.
-- Android: `ClipboardManager-Android-1.1.2.apk`; allow your browser or file manager to install unknown apps, then install it.
+- Windows: `ClipboardManager-Setup-1.1.3.exe`; run it to install.
+- Android: `ClipboardManager-Android-1.1.3.apk`; allow your browser or file manager to install unknown apps, then install it.
 
 ### Build from Source
 
@@ -95,7 +96,14 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 
 ---
 
-## 🆕 What's New in v1.1.2
+## 🆕 What's New in v1.1.3
+
+- Added privacy-first preview masking for mainland China phone numbers, email addresses, ID numbers, Luhn-valid bank cards, labelled passwords/tokens, Bearer tokens, and AWS access keys. Copying still uses the original content, and each protected card can be revealed temporarily.
+- Expanded history search to cover clipboard text, favorite folders, and tags, including tagged or foldered image favorites.
+- Added a persistent always-on-top button to the native-style title bar, with confirmed Windows state transitions and clear active feedback.
+- Extended isolated Electron runtime checks to verify masked/revealed content, metadata search, privacy settings, and always-on-top persistence across restart without touching the real user database.
+
+## What's New in v1.1.2
 
 - Reduced packaged runtime duplication by allowing only the electron-vite main, preload, and renderer bundles into `app.asar`; no clipboard, backup, phone-sync, or UI feature was removed.
 - Excluded build-only icons and stale TypeScript output, removed the unused `concurrently` development dependency, and enabled maximum installer compression.

@@ -45,6 +45,8 @@ const SETTINGS_VALIDATORS: Record<string, (value: string) => boolean> = {
   max_image_size_mb: (value) => ['1', '5', '10', '20'].includes(value),
   hotkey: (value) => value.length <= 80,
   monitor_paused: (value) => value === 'true' || value === 'false',
+  sensitive_preview: (value) => value === 'true' || value === 'false',
+  window_always_on_top: (value) => value === 'true' || value === 'false',
 }
 
 function validId(id: unknown): id is number {
@@ -53,6 +55,17 @@ function validId(id: unknown): id is number {
 
 function safeString(value: unknown, maxLength: number): string {
   return typeof value === 'string' ? value.slice(0, maxLength) : ''
+}
+
+async function setAndConfirmAlwaysOnTop(targetWindow: BrowserWindow, enabled: boolean): Promise<boolean> {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    if (targetWindow.isAlwaysOnTop() === enabled) return enabled
+    targetWindow.setAlwaysOnTop(enabled)
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    if (targetWindow.isAlwaysOnTop() === enabled) return enabled
+  }
+
+  return targetWindow.isAlwaysOnTop()
 }
 
 export function registerIpcHandlers(
@@ -170,6 +183,17 @@ export function registerIpcHandlers(
   })
   ipcMain.handle('window:isMaximized', (event) => {
     return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+  })
+  ipcMain.handle('window:getAlwaysOnTop', (event) => {
+    return BrowserWindow.fromWebContents(event.sender)?.isAlwaysOnTop() ?? false
+  })
+  ipcMain.handle('window:setAlwaysOnTop', async (event, enabled: unknown) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid always-on-top value')
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return false
+    const applied = await setAndConfirmAlwaysOnTop(window, enabled)
+    setSetting('window_always_on_top', applied ? 'true' : 'false')
+    return applied
   })
   ipcMain.handle('window:close', (event) => {
     // Closing the window keeps this tray application's clipboard monitor active.

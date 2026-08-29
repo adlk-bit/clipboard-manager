@@ -5,12 +5,16 @@ import { useI18n } from '../lib/i18n'
 export default function WindowTitleBar() {
   const { t } = useI18n()
   const [isMaximized, setIsMaximized] = useState(false)
+  const [alwaysOnTop, setAlwaysOnTop] = useState(false)
 
   useEffect(() => {
     let mounted = true
 
     window.api.isWindowMaximized().then((maximized) => {
       if (mounted) setIsMaximized(maximized)
+    })
+    window.api.getWindowAlwaysOnTop().then((enabled) => {
+      if (mounted) setAlwaysOnTop(enabled)
     })
 
     const unsubscribe = window.api.onWindowMaximizedChanged(setIsMaximized)
@@ -22,6 +26,10 @@ export default function WindowTitleBar() {
 
   const toggleMaximize = async () => {
     setIsMaximized(await window.api.toggleMaximizeWindow(isMaximized))
+  }
+
+  const toggleAlwaysOnTop = async () => {
+    setAlwaysOnTop(await window.api.setWindowAlwaysOnTop(!alwaysOnTop))
   }
 
   return (
@@ -39,6 +47,16 @@ export default function WindowTitleBar() {
       </div>
 
       <div className="window-controls no-drag flex h-full shrink-0" onDoubleClick={(event) => event.stopPropagation()}>
+        <button
+          type="button"
+          className={`window-control-button ${alwaysOnTop ? 'window-control-button-active' : ''}`}
+          aria-label={alwaysOnTop ? t('window.unpin') : t('window.pin')}
+          aria-pressed={alwaysOnTop}
+          title={alwaysOnTop ? t('window.unpin') : t('window.pin')}
+          onClick={toggleAlwaysOnTop}
+        >
+          <Icon name="pin" size={12} />
+        </button>
         <button
           type="button"
           className="window-control-button"

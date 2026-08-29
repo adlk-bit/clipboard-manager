@@ -63,6 +63,16 @@ html.dark #root {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.window-control-button.window-control-button-active {
+  color: #006bd6;
+  background: #e4f1fc;
+}
+
+.dark .window-control-button.window-control-button-active {
+  color: #53a9ff;
+  background: rgba(10, 132, 255, 0.2);
+}
+
 .window-control-button:active {
   background: rgba(120, 120, 128, 0.25);
 }

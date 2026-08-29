@@ -3,11 +3,42 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import initSqlJs from 'sql.js'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 const electronExe = process.env.RUNTIME_EXECUTABLE || path.join(repoRoot, 'node_modules', 'electron', 'dist', 'electron.exe')
 const isPackagedRuntime = Boolean(process.env.RUNTIME_EXECUTABLE)
 const profileDir = await mkdtemp(path.join(os.tmpdir(), 'clipboard-manager-runtime-'))
+
+async function seedRuntimeProfile() {
+  const SQL = await initSqlJs({
+    locateFile: (file) => path.join(repoRoot, 'node_modules', 'sql.js', 'dist', file),
+  })
+  const database = new SQL.Database()
+  database.run(`
+    CREATE TABLE clipboard_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      content TEXT,
+      image_path TEXT,
+      is_pinned INTEGER DEFAULT 0,
+      is_favorite INTEGER DEFAULT 0,
+      use_count INTEGER NOT NULL DEFAULT 1,
+      last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      content_hash TEXT NOT NULL DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      favorite_folder TEXT NOT NULL DEFAULT '',
+      favorite_tags TEXT NOT NULL DEFAULT '',
+      favorite_sort_order INTEGER NOT NULL DEFAULT 0
+    )
+  `)
+  database.run(
+    'INSERT INTO clipboard_history (type, content, is_favorite, favorite_folder, favorite_tags) VALUES (?, ?, 1, ?, ?)',
+    ['text', '客户手机 13812345678', '工作', '客户,紧急']
+  )
+  await writeFile(path.join(profileDir, 'clipboard.db'), Buffer.from(database.export()))
+  database.close()
+}
 
 async function waitForRenderer(port) {
   const deadline = Date.now() + 20_000
@@ -20,6 +51,19 @@ async function waitForRenderer(port) {
     await new Promise((resolve) => setTimeout(resolve, 150))
   }
   throw new Error('Electron renderer did not expose a debugging target')
+}
+
+async function fetchWithRetry(input, init) {
+  let lastError
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return await fetch(input, init)
+    } catch (error) {
+      lastError = error
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  }
+  throw lastError
 }
 
 async function connect(webSocketUrl) {
@@ -77,7 +121,10 @@ async function runElectron(port, assertion) {
     `--user-data-dir=${profileDir}`,
     ...(isPackagedRuntime ? [] : [repoRoot]),
     '--runtime-smoke-test',
-  ], { stdio: ['ignore', 'pipe', 'pipe'] })
+  ], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, CLIPBOARD_MANAGER_USER_DATA_DIR: profileDir },
+  })
   let stderr = ''
   child.stderr.on('data', (chunk) => { stderr += chunk.toString() })
 
@@ -99,9 +146,77 @@ async function runElectron(port, assertion) {
 }
 
 try {
+  await seedRuntimeProfile()
   await runElectron(9321, async (cdp) => {
     const initial = await cdp.evaluate('window.api.getMonitorPaused()')
     assert.equal(initial.result.value, false)
+
+    const historyFeatures = await cdp.evaluate(`(async () => {
+      const deadline = Date.now() + 5_000
+      let card = document.querySelector('.history-card')
+      while (!card && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        card = document.querySelector('.history-card')
+      }
+      const maskedText = card?.querySelector('p')?.textContent || ''
+      const reveal = card?.querySelector('button[aria-label="显示敏感内容"]')
+      reveal?.click()
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      const revealedText = card?.querySelector('p')?.textContent || ''
+      const tagMatches = await window.api.getHistory('紧急', 'all', '', 'recent')
+      const folderMatches = await window.api.getHistory('工作', 'all', '', 'recent')
+      return {
+        maskedText,
+        rawInitiallyHidden: !maskedText.includes('13812345678'),
+        hasRevealAction: Boolean(reveal),
+        revealedText,
+        tagMatchIds: tagMatches.map((item) => item.id),
+        folderMatchIds: folderMatches.map((item) => item.id),
+      }
+    })()`)
+    assert.deepEqual(historyFeatures.result.value, {
+      maskedText: '客户手机 138••••5678',
+      rawInitiallyHidden: true,
+      hasRevealAction: true,
+      revealedText: '客户手机 13812345678',
+      tagMatchIds: [1],
+      folderMatchIds: [1],
+    })
+
+    const alwaysOnTop = await cdp.evaluate(`(async () => {
+      const initial = await window.api.getWindowAlwaysOnTop()
+      const pinButton = document.querySelector('button[aria-label="窗口置顶"]')
+      pinButton?.click()
+      const deadline = Date.now() + 2_000
+      let applied = await window.api.getWindowAlwaysOnTop()
+      while (!applied && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 25))
+        applied = await window.api.getWindowAlwaysOnTop()
+      }
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      return {
+        initial,
+        hasPinButton: Boolean(pinButton),
+        applied,
+        pressed: pinButton?.getAttribute('aria-pressed') === 'true',
+        activeStyle: pinButton?.classList.contains('window-control-button-active') === true,
+      }
+    })()`)
+    assert.deepEqual(alwaysOnTop.result.value, {
+      initial: false,
+      hasPinButton: true,
+      applied: true,
+      pressed: true,
+      activeStyle: true,
+    })
+    if (process.env.RUNTIME_HISTORY_SCREENSHOT_PATH) {
+      await cdp.evaluate(`(async () => {
+        document.querySelector('button[aria-label="重新隐藏敏感内容"]')?.click()
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      })()`)
+      const screenshot = await cdp.captureScreenshot()
+      await writeFile(process.env.RUNTIME_HISTORY_SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'))
+    }
 
     const emojiUi = await cdp.evaluate(`(async () => {
       const deadline = Date.now() + 5_000
@@ -154,10 +269,10 @@ try {
     if (!runtimePairing.result.value.skipped) {
       assert.equal(runtimePairing.result.value.success, true)
       const pairingUrl = runtimePairing.result.value.pairing.pairingUrl
-      const pairingPage = await fetch(pairingUrl)
+      const pairingPage = await fetchWithRetry(pairingUrl)
       assert.equal(pairingPage.status, 200)
       assert.match(await pairingPage.text(), /连接手机与电脑/)
-      const unauthorizedState = await fetch(new URL('/api/state', pairingUrl))
+      const unauthorizedState = await fetchWithRetry(new URL('/api/state', pairingUrl))
       assert.equal(unauthorizedState.status, 401)
     }
     const invalidEmoji = await cdp.evaluate("window.api.sendEmoji(String.fromCharCode(10))")
@@ -172,12 +287,20 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 150))
 
       const darkToggle = document.querySelector('button[role="switch"]')
+      const privacyToggle = document.querySelectorAll('button[role="switch"]')[1]
       const trackBefore = darkToggle?.getBoundingClientRect()
       const knobBefore = darkToggle?.querySelector('span')?.getBoundingClientRect()
       darkToggle?.click()
       await new Promise((resolve) => setTimeout(resolve, 200))
       const trackAfter = darkToggle?.getBoundingClientRect()
       const knobAfter = darkToggle?.querySelector('span')?.getBoundingClientRect()
+
+      const privacyInitiallyEnabled = privacyToggle?.getAttribute('aria-checked') === 'true'
+      privacyToggle?.click()
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      const storedSensitivePreviewDisabled = await window.api.getSetting('sensitive_preview')
+      privacyToggle?.click()
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       const englishButton = Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'English')
       englishButton?.click()
@@ -191,6 +314,9 @@ try {
         hasEnglishSettingsNavigation: Boolean(document.querySelector('button[aria-label="Settings"]')),
         storedLanguage: await window.api.getSetting('language'),
         storedDarkMode: await window.api.getSetting('dark_mode'),
+        privacyInitiallyEnabled,
+        storedSensitivePreviewDisabled,
+        storedSensitivePreviewRestored: await window.api.getSetting('sensitive_preview'),
         knobStartsLeft: Boolean(trackBefore && knobBefore && knobBefore.left + knobBefore.width / 2 < trackBefore.left + trackBefore.width / 2),
         knobEndsRight: Boolean(trackAfter && knobAfter && knobAfter.left + knobAfter.width / 2 > trackAfter.left + trackAfter.width / 2),
         knobInsideTrack: Boolean(
@@ -208,6 +334,9 @@ try {
       hasEnglishSettingsNavigation: true,
       storedLanguage: 'en',
       storedDarkMode: 'true',
+      privacyInitiallyEnabled: true,
+      storedSensitivePreviewDisabled: 'false',
+      storedSensitivePreviewRestored: 'true',
       knobStartsLeft: true,
       knobEndsRight: true,
       knobInsideTrack: true,
@@ -232,6 +361,11 @@ try {
   await runElectron(9322, async (cdp) => {
     const restored = await cdp.evaluate('window.api.getMonitorPaused()')
     assert.equal(restored.result.value, true)
+    const restoredFeatureSettings = await cdp.evaluate(`(async () => ({
+      alwaysOnTop: await window.api.getWindowAlwaysOnTop(),
+      sensitivePreview: await window.api.getSetting('sensitive_preview'),
+    }))()`)
+    assert.deepEqual(restoredFeatureSettings.result.value, { alwaysOnTop: true, sensitivePreview: 'true' })
     const restoredLanguage = await cdp.evaluate(`(async () => {
       const deadline = Date.now() + 5_000
       while (!document.querySelector('button[aria-label="Settings"]') && Date.now() < deadline) {
@@ -249,11 +383,12 @@ try {
       hasEnglishNavigation: true,
     })
     await cdp.evaluate("window.api.setSetting('language', 'zh-CN')")
+    await cdp.evaluate('window.api.setWindowAlwaysOnTop(false)')
     const resumed = await cdp.evaluate('window.api.setMonitorPaused(false)')
     assert.equal(resumed.result.value, false)
   })
 
-  console.log('Runtime smoke passed: Emoji UI, phone device UI/service, settings switch geometry, language persistence, clipboard input validation, and pause persistence work across restart.')
+  console.log('Runtime smoke passed: sensitive previews, metadata search, persistent always-on-top, Emoji UI, phone device UI/service, settings, validation, and pause persistence work across restart.')
 } finally {
   await rm(profileDir, { recursive: true, force: true })
 }

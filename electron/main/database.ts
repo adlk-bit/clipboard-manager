@@ -4,10 +4,10 @@ import initSqlJs, { Database as SqlJsDatabase } from 'sql.js'
 import fs from 'fs'
 import { createHash, randomUUID } from 'crypto'
 import type { BackupSnapshot, BackupHistoryItem, BackupStickerItem } from './backup'
-import { getHistoryImagesDir, getStickersDir, isPathInside } from './asset-paths'
+import { getAppUserDataDir, getHistoryImagesDir, getStickersDir, isPathInside } from './asset-paths'
 
 let db: SqlJsDatabase
-const DB_PATH = path.join(app.getPath('userData'), 'clipboard.db')
+const DB_PATH = path.join(getAppUserDataDir(), 'clipboard.db')
 const DB_BACKUP_PATH = `${DB_PATH}.bak`
 const DB_TEMP_PATH = `${DB_PATH}.tmp`
 let saveTimer: NodeJS.Timeout | null = null
@@ -197,6 +197,8 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
   if (!getSetting('max_history_items')) setSetting('max_history_items', '500')
   if (!getSetting('max_image_size_mb')) setSetting('max_image_size_mb', '10')
   if (!getSetting('monitor_paused')) setSetting('monitor_paused', 'false')
+  if (!getSetting('sensitive_preview')) setSetting('sensitive_preview', 'true')
+  if (!getSetting('window_always_on_top')) setSetting('window_always_on_top', 'false')
 
   cleanupStorageIntegrity()
   saveDb()
@@ -367,8 +369,9 @@ export function getHistoryList(
     }
 
     if (search) {
-      query += ' AND type = ? AND content LIKE ?'
-      params.push('text', `%${search}%`)
+      query += ' AND (content LIKE ? OR favorite_folder LIKE ? OR favorite_tags LIKE ?)'
+      const term = `%${search}%`
+      params.push(term, term, term)
     }
 
     if (filter === 'favorites') {
@@ -562,7 +565,7 @@ export function deleteSticker(id: number): void {
   saveDb()
 }
 
-const PORTABLE_SETTING_KEYS = ['retention_days', 'dark_mode', 'language', 'max_history_items', 'max_image_size_mb', 'monitor_paused'] as const
+const PORTABLE_SETTING_KEYS = ['retention_days', 'dark_mode', 'language', 'max_history_items', 'max_image_size_mb', 'monitor_paused', 'sensitive_preview', 'window_always_on_top'] as const
 
 export function getBackupSnapshot(): BackupSnapshot {
   const historyStmt = db.prepare('SELECT * FROM clipboard_history ORDER BY id ASC')
@@ -613,6 +616,8 @@ function validatedPortableSetting(key: string, value: string): string | null {
   if (key === 'max_history_items') return ['100', '300', '500', '1000'].includes(value) ? value : null
   if (key === 'max_image_size_mb') return ['1', '5', '10', '20'].includes(value) ? value : null
   if (key === 'monitor_paused') return value === 'true' ? 'true' : value === 'false' ? 'false' : null
+  if (key === 'sensitive_preview') return value === 'true' ? 'true' : value === 'false' ? 'false' : null
+  if (key === 'window_always_on_top') return value === 'true' ? 'true' : value === 'false' ? 'false' : null
   return null
 }
 
