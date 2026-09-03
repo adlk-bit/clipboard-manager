@@ -54,8 +54,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download:
 
-- Windows: `ClipboardManager-Setup-1.1.3.exe`; run it to install.
-- Android: `ClipboardManager-Android-1.1.3.apk`; allow your browser or file manager to install unknown apps, then install it.
+- Windows: `ClipboardManager-Setup-1.1.4.exe`; run it to install.
+- Android: `ClipboardManager-Android-1.1.4.apk`; allow your browser or file manager to install unknown apps, then install it.
 
 ### Build from Source
 
@@ -96,7 +96,14 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 
 ---
 
-## 🆕 What's New in v1.1.3
+## 🆕 What's New in v1.1.4
+
+- Fixed launch-at-startup on Windows by registering and verifying the packaged `ClipboardManager.exe` as the current user's login item.
+- Existing installations with no saved startup preference are repaired automatically on the first v1.1.4 launch and then start silently in the system tray after Windows sign-in.
+- Added a bilingual **Launch at startup** switch that reflects the effective Windows Startup Apps state and respects a startup item disabled by the user in Windows.
+- Added focused coverage for packaged/development behavior, first-run repair, explicit enable/disable, and Windows-disabled startup entries.
+
+## What's New in v1.1.3
 
 - Added privacy-first preview masking for mainland China phone numbers, email addresses, ID numbers, Luhn-valid bank cards, labelled passwords/tokens, Bearer tokens, and AWS access keys. Copying still uses the original content, and each protected card can be revealed temporarily.
 - Expanded history search to cover clipboard text, favorite folders, and tags, including tagged or foldered image favorites.

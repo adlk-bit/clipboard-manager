@@ -7,6 +7,7 @@ import { startScheduler, stopScheduler } from './scheduler'
 import { registerIpcHandlers } from './ipc-handlers'
 import { isManagedAssetPath } from './asset-paths'
 import { MobileSyncService, setMobileSyncService } from './mobile-sync'
+import { synchronizeAutoLaunch } from './auto-launch'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -305,6 +306,18 @@ app.whenReady().then(async () => {
 
   // Initialize database
   await initDatabaseAsync()
+
+  // Runtime smoke tests must not modify the user's real Windows startup list.
+  // Normal packaged launches also repair the missing login item from releases
+  // that exposed the expected background behavior without registering it.
+  if (!isRuntimeTest) {
+    const autoLaunch = synchronizeAutoLaunch(app, getSetting('auto_launch'))
+    if (autoLaunch.supported && autoLaunch.success) {
+      setSetting('auto_launch', autoLaunch.enabled ? 'true' : 'false')
+    } else if (autoLaunch.supported) {
+      console.error('Failed to synchronize auto-launch:', autoLaunch.error)
+    }
+  }
 
   // Privacy pause persists until the user explicitly resumes recording.
   setMonitorPaused(getSetting('monitor_paused') === 'true')

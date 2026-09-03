@@ -10,6 +10,8 @@ export default function SettingsPanel() {
   const darkMode = useStore((s) => s.darkMode)
   const sensitivePreview = useStore((s) => s.sensitivePreview)
   const hotkey = useStore((s) => s.hotkey)
+  const autoLaunch = useStore((s) => s.autoLaunch)
+  const autoLaunchSupported = useStore((s) => s.autoLaunchSupported)
   const maxHistoryItems = useStore((s) => s.maxHistoryItems)
   const maxImageSizeMb = useStore((s) => s.maxImageSizeMb)
   const historyStats = useStore((s) => s.historyStats)
@@ -18,6 +20,7 @@ export default function SettingsPanel() {
   const setSensitivePreview = useStore((s) => s.setSensitivePreview)
   const setLanguage = useStore((s) => s.setLanguage)
   const setHotkey = useStore((s) => s.setHotkey)
+  const updateAutoLaunch = useStore((s) => s.updateAutoLaunch)
   const setMaxHistoryItems = useStore((s) => s.setMaxHistoryItems)
   const setMaxImageSizeMb = useStore((s) => s.setMaxImageSizeMb)
   const saveSettings = useStore((s) => s.saveSettings)
@@ -26,6 +29,7 @@ export default function SettingsPanel() {
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false)
   const [hotkeyMessage, setHotkeyMessage] = useState(() => t('settings.hotkeyDefault'))
   const [appVersion, setAppVersion] = useState('')
+  const [autoLaunchMessage, setAutoLaunchMessage] = useState('')
 
   useEffect(() => {
     loadSettings()
@@ -65,6 +69,12 @@ export default function SettingsPanel() {
   const handleMaxImageSizeChange = async (value: string) => {
     setMaxImageSizeMb(value)
     await saveSettings('max_image_size_mb', value)
+  }
+
+  const handleAutoLaunchChange = async (enabled: boolean) => {
+    setAutoLaunchMessage('')
+    const result = await updateAutoLaunch(enabled)
+    if (!result.success) setAutoLaunchMessage(t('settings.autoLaunchFailed'))
   }
 
   const handleHotkeyKeyDown = async (event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -128,6 +138,18 @@ export default function SettingsPanel() {
       </div>
 
       <div>
+        <h3 className="mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200">{t('settings.behavior')}</h3>
+        <SettingToggle
+          title={t('settings.autoLaunch')}
+          description={t(autoLaunchSupported ? 'settings.autoLaunchHint' : 'settings.autoLaunchUnavailable')}
+          enabled={autoLaunch}
+          disabled={!autoLaunchSupported}
+          onChange={handleAutoLaunchChange}
+        />
+        {autoLaunchMessage && <p className="mt-1 text-[10px] text-red-500 dark:text-red-400">{autoLaunchMessage}</p>}
+      </div>
+
+      <div>
         <h3 className="mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200">{t('settings.hotkey')}</h3>
         <div className="rounded-lg border border-[#e2e2e6] bg-white p-2.5 dark:border-white/[0.08] dark:bg-[#28282b]">
           <button
@@ -179,14 +201,14 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function SettingToggle({ title, description, enabled, onChange }: { title: string; description: string; enabled: boolean; onChange: (value: boolean) => void }) {
+function SettingToggle({ title, description, enabled, disabled = false, onChange }: { title: string; description: string; enabled: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-[#e2e2e6] bg-white px-2.5 py-2 dark:border-white/[0.08] dark:bg-[#28282b]">
       <div>
         <p className="text-xs text-gray-700 dark:text-gray-200">{title}</p>
         <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">{description}</p>
       </div>
-      <button type="button" role="switch" aria-checked={enabled} onClick={() => onChange(!enabled)} className={`no-drag relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150 ${enabled ? 'bg-[#34a853]' : 'bg-[#c7c7cc] dark:bg-[#636366]'}`}>
+      <button type="button" role="switch" aria-checked={enabled} disabled={disabled} onClick={() => onChange(!enabled)} className={`no-drag relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${enabled ? 'bg-[#34a853]' : 'bg-[#c7c7cc] dark:bg-[#636366]'}`}>
         <span className={`absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform duration-150 ${enabled ? 'translate-x-4' : 'translate-x-0'}`} />
       </button>
     </div>

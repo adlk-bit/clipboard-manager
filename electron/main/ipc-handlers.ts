@@ -30,6 +30,7 @@ import { isMonitorPaused, markClipboardHistoryItemCopied } from './clipboard-mon
 import { getHistoryImagesDir, getStickersDir, isPathInside } from './asset-paths'
 import { readBackupFile, removePreparedFiles, writePortableBackup } from './backup'
 import { getMobileSyncService } from './mobile-sync'
+import { getAutoLaunchStatus, setAutoLaunchEnabled } from './auto-launch'
 
 export interface HotkeyUpdateResult {
   success: boolean
@@ -228,6 +229,14 @@ export function registerIpcHandlers(
     setSetting(key, value)
     if (key === 'max_history_items') enforceHistoryLimit(parseInt(value, 10))
     if (key === 'language') refreshApplicationLanguage()
+  })
+
+  ipcMain.handle('settings:getAutoLaunch', () => getAutoLaunchStatus(app))
+  ipcMain.handle('settings:setAutoLaunch', (_event, enabled: unknown) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid auto-launch value')
+    const result = setAutoLaunchEnabled(app, enabled)
+    if (result.success) setSetting('auto_launch', result.enabled ? 'true' : 'false')
+    return result
   })
 
   ipcMain.handle('history:stats', () => getHistoryStats())

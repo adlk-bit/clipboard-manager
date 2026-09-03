@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { HistoryItem, StickerItem, PageView, HistoryStats } from '../types'
+import type { HistoryItem, StickerItem, PageView, HistoryStats, AutoLaunchUpdateResult } from '../types'
 import type { AppLanguage } from '../lib/i18n'
 
 interface AppState {
@@ -36,6 +36,8 @@ interface AppState {
   sensitivePreview: boolean
   language: AppLanguage
   hotkey: string
+  autoLaunch: boolean
+  autoLaunchSupported: boolean
   monitorPaused: boolean
   maxHistoryItems: string
   maxImageSizeMb: string
@@ -45,6 +47,7 @@ interface AppState {
   setSensitivePreview: (on: boolean) => void
   setLanguage: (language: AppLanguage) => void
   setHotkey: (hotkey: string) => void
+  updateAutoLaunch: (enabled: boolean) => Promise<AutoLaunchUpdateResult>
   setMonitorPaused: (paused: boolean) => void
   toggleMonitorPaused: () => Promise<void>
   loadMonitorPaused: () => Promise<void>
@@ -157,6 +160,8 @@ export const useStore = create<AppState>((set, get) => ({
   sensitivePreview: true,
   language: 'zh-CN',
   hotkey: 'Ctrl+Shift+V',
+  autoLaunch: false,
+  autoLaunchSupported: false,
   monitorPaused: false,
   maxHistoryItems: '500',
   maxImageSizeMb: '10',
@@ -166,6 +171,24 @@ export const useStore = create<AppState>((set, get) => ({
   setSensitivePreview: (on) => set({ sensitivePreview: on }),
   setLanguage: (language) => set({ language }),
   setHotkey: (hotkey) => set({ hotkey }),
+  updateAutoLaunch: async (enabled) => {
+    const previous = get().autoLaunch
+    set({ autoLaunch: enabled })
+    try {
+      const result = await window.api.setAutoLaunch(enabled)
+      set({ autoLaunch: result.enabled, autoLaunchSupported: result.supported })
+      return result
+    } catch (error) {
+      set({ autoLaunch: previous })
+      return {
+        success: false,
+        supported: get().autoLaunchSupported,
+        configured: previous,
+        enabled: previous,
+        error: String(error),
+      }
+    }
+  },
   setMonitorPaused: (paused) => set({ monitorPaused: paused }),
   toggleMonitorPaused: async () => {
     const previous = get().monitorPaused
@@ -204,12 +227,15 @@ export const useStore = create<AppState>((set, get) => ({
       const hotkey = await window.api.getSetting('hotkey')
       const maxHistoryItems = await window.api.getSetting('max_history_items')
       const maxImageSizeMb = await window.api.getSetting('max_image_size_mb')
+      const autoLaunch = await window.api.getAutoLaunch()
       set({
         retentionDays: retention || '3',
         darkMode: darkMode === 'true',
         sensitivePreview: sensitivePreview !== 'false',
         language: language === 'en' ? 'en' : 'zh-CN',
         hotkey: hotkey || 'Ctrl+Shift+V',
+        autoLaunch: autoLaunch.enabled,
+        autoLaunchSupported: autoLaunch.supported,
         maxHistoryItems: maxHistoryItems || '500',
         maxImageSizeMb: maxImageSizeMb || '10'
       })

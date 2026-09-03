@@ -26,6 +26,17 @@ export interface HistoryStats {
   imageBytes: number
 }
 
+export interface AutoLaunchStatus {
+  supported: boolean
+  configured: boolean
+  enabled: boolean
+  error?: string
+}
+
+export interface AutoLaunchUpdateResult extends AutoLaunchStatus {
+  success: boolean
+}
+
 export interface NetworkAddress {
   name: string
   address: string
@@ -104,6 +115,8 @@ export interface ElectronApi {
   getSetting: (key: string) => Promise<string | null>
   setSetting: (key: string, value: string) => Promise<void>
   setHotkey: (hotkey: string) => Promise<{ success: boolean; hotkey?: string; error?: string }>
+  getAutoLaunch: () => Promise<AutoLaunchStatus>
+  setAutoLaunch: (enabled: boolean) => Promise<AutoLaunchUpdateResult>
   getMonitorPaused: () => Promise<boolean>
   setMonitorPaused: (paused: boolean) => Promise<boolean>
   onMonitorPausedChanged: (callback: (paused: boolean) => void) => () => void

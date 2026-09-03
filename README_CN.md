@@ -54,8 +54,8 @@
 
 前往 [Releases](https://github.com/adlk-bit/clipboard-manager/releases) 下载：
 
-- Windows：`ClipboardManager-Setup-1.1.3.exe`，双击运行安装。
-- Android：`ClipboardManager-Android-1.1.3.apk`，允许浏览器或文件管理器“安装未知应用”后安装。
+- Windows：`ClipboardManager-Setup-1.1.4.exe`，双击运行安装。
+- Android：`ClipboardManager-Android-1.1.4.apk`，允许浏览器或文件管理器“安装未知应用”后安装。
 
 ### 从源码运行
 
@@ -96,7 +96,14 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 
 ---
 
-## 🆕 v1.1.3 更新内容
+## 🆕 v1.1.4 更新内容
+
+- 修复 Windows 开机自启动：将安装后的 `ClipboardManager.exe` 注册为当前用户登录项，并在写入后读取系统实际状态进行确认。
+- 旧版本没有保存启动偏好的安装，会在首次运行 v1.1.4 时自动修复；以后登录 Windows 后静默启动并驻留系统托盘。
+- 设置页新增中英双语“开机自动启动”开关，显示 Windows“启动应用”中的实际生效状态；若用户在系统中禁用，应用会尊重该选择，不会反复抢回。
+- 新增针对安装版/开发版、首次修复、显式启停及 Windows 系统禁用状态的专项测试。
+
+## v1.1.3 更新内容
 
 - 新增隐私优先的预览脱敏，可识别中国大陆手机号、邮箱、身份证、通过 Luhn 校验的银行卡、带标签的密码/Token、Bearer Token 与 AWS Access Key；复制仍使用原文，并可按卡片临时显示。
 - 历史搜索扩展为同时覆盖剪贴板文字、收藏目录和标签，也能通过目录或标签找到图片收藏。

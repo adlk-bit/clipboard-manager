@@ -38,6 +38,8 @@ const api = {
   getSetting: (key: string) => ipcRenderer.invoke('settings:get', key),
   setSetting: (key: string, value: string) => ipcRenderer.invoke('settings:set', key, value),
   setHotkey: (hotkey: string) => ipcRenderer.invoke('settings:setHotkey', hotkey),
+  getAutoLaunch: () => ipcRenderer.invoke('settings:getAutoLaunch'),
+  setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('settings:setAutoLaunch', enabled),
 
   // Clipboard monitor
   getMonitorPaused: () => ipcRenderer.invoke('monitor:getPaused'),
