@@ -1,3 +1,5 @@
+import type { HistoryContentType } from '../../shared/history-query'
+
 export interface HistoryItem {
   id: number
   type: 'text' | 'image'
@@ -90,7 +92,7 @@ export type BackupImportResult =
 export type PageView = 'all' | 'favorites' | 'emoji' | 'stickers' | 'devices' | 'settings'
 
 export interface ElectronApi {
-  getHistory: (search?: string, filter?: string, folder?: string, sort?: 'recent' | 'frequent') => Promise<HistoryItem[]>
+  getHistory: (search?: string, filter?: string, folder?: string, sort?: 'recent' | 'frequent', contentType?: HistoryContentType) => Promise<HistoryItem[]>
   togglePin: (id: number) => Promise<void>
   toggleFavorite: (id: number) => Promise<void>
   deleteHistory: (id: number) => Promise<void>

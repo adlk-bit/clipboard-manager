@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { HistoryItem, StickerItem, PageView, HistoryStats, AutoLaunchUpdateResult } from '../types'
 import type { AppLanguage } from '../lib/i18n'
+import type { HistoryContentType } from '../../shared/history-query'
 
 interface AppState {
   // Navigation
@@ -9,6 +10,11 @@ interface AppState {
 
   // History
   historyItems: HistoryItem[]
+  historyLoading: boolean
+  historyError: boolean
+  _historyRequest: number
+  contentType: HistoryContentType
+  setContentType: (type: HistoryContentType) => void
   setHistoryItems: (items: HistoryItem[]) => void
   historySort: 'recent' | 'frequent'
   setHistorySort: (sort: 'recent' | 'frequent') => void
@@ -79,7 +85,10 @@ export const useStore = create<AppState>((set, get) => ({
   // Navigation
   currentPage: 'all',
   setCurrentPage: (page) => {
-    set({ currentPage: page, searchQuery: '', selectionMode: false, selectedIds: new Set() })
+    const timer = get()._searchTimer
+    if (timer) clearTimeout(timer)
+    set({ currentPage: page, searchQuery: '', selectionMode: false, selectedIds: new Set(), keyboardActiveId: null,
+      contentType: 'all', historyItems: [], historyLoading: false, historyError: false, _searchTimer: null, _historyRequest: get()._historyRequest + 1 })
     if (page === 'stickers') {
       get().loadStickers()
     } else if (page === 'settings') {
@@ -93,6 +102,14 @@ export const useStore = create<AppState>((set, get) => ({
 
   // History
   historyItems: [],
+  historyLoading: false,
+  historyError: false,
+  _historyRequest: 0,
+  contentType: 'all',
+  setContentType: (type) => {
+    set({ contentType: type, keyboardActiveId: null, selectedIds: new Set() })
+    void get().loadHistory()
+  },
   setHistoryItems: (items) => set({ historyItems: items }),
   historySort: 'recent',
   setHistorySort: (sort) => {
@@ -115,13 +132,27 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
   loadHistory: async (search, filter) => {
+    const state = get()
+    if (state.currentPage !== 'all' && state.currentPage !== 'favorites') return
+    const activeFilter = state.currentPage === 'favorites' ? 'favorites' : 'all'
+    const query = search ?? state.searchQuery
+    // Ignore callbacks captured before a navigation or search change.
+    if ((filter && filter !== activeFilter) || query !== state.searchQuery) return
+    if (state._searchTimer) clearTimeout(state._searchTimer)
+    const request = state._historyRequest + 1
+    set({ _historyRequest: request, _searchTimer: null, historyLoading: true, historyError: false })
     try {
-      const activeFilter = filter || 'all'
-      const folder = activeFilter === 'favorites' ? get().favoriteFolder : ''
-      const sort = activeFilter === 'all' ? get().historySort : 'recent'
-      const items = await window.api.getHistory(search || '', activeFilter, folder, sort)
-      set({ historyItems: items })
+      const folder = activeFilter === 'favorites' ? state.favoriteFolder : ''
+      const sort = activeFilter === 'all' ? state.historySort : 'recent'
+      const items = await window.api.getHistory(query, activeFilter, folder, sort, state.contentType)
+      if (get()._historyRequest !== request) return
+      const visibleIds = new Set(items.map((item) => item.id))
+      set({ historyItems: items, historyLoading: false,
+        keyboardActiveId: visibleIds.has(get().keyboardActiveId!) ? get().keyboardActiveId : null,
+        selectedIds: new Set([...get().selectedIds].filter((id) => visibleIds.has(id))) })
     } catch (e) {
+      if (get()._historyRequest !== request) return
+      set({ historyLoading: false, historyError: true, historyItems: [], selectedIds: new Set(), keyboardActiveId: null })
       console.error('Failed to load history:', e)
     }
   },
@@ -142,15 +173,13 @@ export const useStore = create<AppState>((set, get) => ({
   searchQuery: '',
   _searchTimer: null,
   setSearchQuery: (query) => {
-    set({ searchQuery: query })
+    set({ searchQuery: query.slice(0, 500), keyboardActiveId: null, selectedIds: new Set(),
+      _historyRequest: get()._historyRequest + 1, historyError: false })
     const timer = get()._searchTimer
     if (timer) clearTimeout(timer)
     const { currentPage } = get()
-    const filter = currentPage === 'favorites' ? 'favorites' : 'all'
     if (currentPage === 'all' || currentPage === 'favorites') {
-      set({ _searchTimer: setTimeout(() => {
-      get().loadHistory(query, filter)
-      }, 200) })
+      set({ historyLoading: true, _searchTimer: setTimeout(() => { void get().loadHistory() }, 200) })
     }
   },
 
@@ -220,14 +249,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
   loadSettings: async () => {
     try {
-      const retention = await window.api.getSetting('retention_days')
-      const darkMode = await window.api.getSetting('dark_mode')
-      const sensitivePreview = await window.api.getSetting('sensitive_preview')
-      const language = await window.api.getSetting('language')
-      const hotkey = await window.api.getSetting('hotkey')
-      const maxHistoryItems = await window.api.getSetting('max_history_items')
-      const maxImageSizeMb = await window.api.getSetting('max_image_size_mb')
-      const autoLaunch = await window.api.getAutoLaunch()
+      const [retention, darkMode, sensitivePreview, language, hotkey, maxHistoryItems, maxImageSizeMb, autoLaunch] = await Promise.all([
+        window.api.getSetting('retention_days'), window.api.getSetting('dark_mode'),
+        window.api.getSetting('sensitive_preview'), window.api.getSetting('language'),
+        window.api.getSetting('hotkey'), window.api.getSetting('max_history_items'),
+        window.api.getSetting('max_image_size_mb'), window.api.getAutoLaunch(),
+      ])
       set({
         retentionDays: retention || '3',
         darkMode: darkMode === 'true',

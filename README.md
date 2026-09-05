@@ -13,7 +13,7 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 
 ## Runtime Screenshot
 
-![Clipboard Manager Settings in dark mode with English selected](docs/images/settings-language-en.png)
+![Clipboard Manager v1.2.0 history filters in dark mode](docs/images/history-v1.2.0-en.png)
 
 Captured from the actual Electron runtime at the default 400 × 600 window size. The interface can switch immediately between Simplified Chinese and English from Settings.
 
@@ -28,15 +28,15 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 | ♻️ **Smart Deduplication** | Identical text and images merge into one entry with a usage count and last-used time, keeping history compact |
 | 🔥 **Frequently Used View** | Switch between newest and most-used entries to reach recurring content faster |
 | 📌 **Organized Favorites** | Pin or favorite important entries, then add folders/tags and reorder favorites |
-| 🔍 **Live Search** | Search text content, favorite folders, and tags as you type |
+| 🔍 **Live Search** | Filter text, links, or images; match all space-separated keywords across content, folders, and tags, including literal `%` / `_` searches |
 | 👁️ **Sensitive Preview Masking** | Hide phone numbers, email addresses, IDs, valid bank cards, and common secrets in previews while preserving the original copied value |
 | 🔗 **Quick-Open URLs** | URL-only clipboard items can be opened safely in the default browser |
-| ✏️ **Edit Before Copy** | Edit any text entry in a focused dialog, then copy the revised content without overwriting the original history item |
+| ✏️ **Edit Before Copy** | Trim lines, remove blank/duplicate lines, join lines, change case, format/minify JSON, undo, and reset without overwriting the original record |
 | 😀 **Emoji Picker** | Browse 233 built-in Emoji across seven categories, search in Chinese or English, and quickly reuse recent choices |
 | 🖼️ **Sticker Library** | Import local images as stickers, click to copy to clipboard |
 | 📱 **Phone Sharing** | Pair iPhone or Android over the same LAN, exchange text with Windows, and manage connected devices |
 | 🔢 **Verification Code Relay** | iPhone uses a Messages Shortcut; Android uses explicit notification access and relays only six digits without retaining history |
-| ☑️ **Batch Mode** | Select multiple entries for bulk deletion |
+| ☑️ **Batch Mode** | Enter selection from the top toolbar; delete or merge text records with newline, blank-line, comma, or tab separators and a reversible order preview |
 | 🗑️ **Auto-Cleanup** | Choose 1 / 3 / 5 days or forever; expiry follows last use and removes linked image files |
 | 🌙 **Compact System UI** | A space-efficient light/dark interface with unified SVG icons, clear primary actions, and reduced-motion support |
 | 🌐 **Bilingual Interface** | Switch the full desktop interface between Simplified Chinese and English in Settings; the choice persists across restarts |
@@ -54,8 +54,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download:
 
-- Windows: `ClipboardManager-Setup-1.1.4.exe`; run it to install.
-- Android: `ClipboardManager-Android-1.1.4.apk`; allow your browser or file manager to install unknown apps, then install it.
+- Windows: [ClipboardManager-Setup-1.2.0.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.0/ClipboardManager-Setup-1.2.0.exe); run it to install.
+- Android: [ClipboardManager-Android-1.2.0.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.0/ClipboardManager-Android-1.2.0.apk); allow your browser or file manager to install unknown apps, then install it.
 
 ### Build from Source
 
@@ -96,7 +96,18 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 
 ---
 
-## 🆕 What's New in v1.1.4
+## 🆕 What's New in v1.2.0
+
+- Find and copy: text/link/image filters, multi-keyword search, and protection against outdated search results after rapid typing or navigation.
+- Keyboard: `Ctrl+F` focuses search, `↑/↓` selects results while searching, `Enter` copies and hides the window, and `Ctrl+1`–`Ctrl+9` copies the first nine visible results. `Space` edits selected text; `Esc` exits selection, clears search, or hides the window. IME composition and dialogs do not trigger background copying.
+- Text tools and merging: preview before copying, with undo and reset. Revised text is limited to 10,000 characters with an explicit error instead of silent truncation. JSON tools preserve large integers, decimal precision, duplicate keys, and existing escapes.
+- Performance and privacy: fewer card renders during selection/navigation, image-size statistics refreshed on demand in Settings, and copy notifications that do not expose sensitive content.
+
+- Android companion version synchronized to 1.2.0 (version code 7); existing phone features and pairing remain unchanged.
+
+See the [v1.2.0 release notes](docs/releases/v1.2.0.md) for downloads and validation limits, and the [efficiency improvement notes](docs/efficiency-improvements.md) for rationale and future priorities.
+
+## What's New in v1.1.4
 
 - Fixed launch-at-startup on Windows by registering and verifying the packaged `ClipboardManager.exe` as the current user's login item.
 - Existing installations with no saved startup preference are repaired automatically on the first v1.1.4 launch and then start silently in the system tray after Windows sign-in.
@@ -150,8 +161,10 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 | Organize favorites | In Favorites, use the card actions to edit folders/tags or reorder |
 | Open a URL | Hover a URL-only item → click 🔗 |
 | Delete | Hover card → click 🗑️ |
-| Batch select | Click “Batch manage” below the list to enter multi-select mode |
-| Search | Type in the search bar at top |
+| Batch select | Click “Manage” above the list; select at least two text records and choose “Merge & copy” |
+| Search | Press `Ctrl+F`; separate keywords with spaces and choose All / Text / Links / Images |
+| Quick copy | `Ctrl+1`–`Ctrl+9` copies the first nine results; use `↑/↓` + `Enter` while searching |
+| Text tools | Open “Edit before copying” or “Merge & copy”, choose a tool, apply, and preview before copying |
 | Emoji | Sidebar → "Emoji" → choose a category or search → click an Emoji to copy |
 | Stickers | Sidebar → "Stickers" → Import → click image to copy |
 | Connect phone | Sidebar → "Connected Devices" → generate QR → scan with the phone Camera |

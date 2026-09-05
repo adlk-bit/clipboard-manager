@@ -3,15 +3,22 @@ import type { HistoryItem } from '../types'
 import HistoryCard from './HistoryCard'
 import Icon from './Icon'
 import { useI18n } from '../lib/i18n'
+import type { HistoryContentType } from '../../shared/history-query'
 
 interface HistoryListProps {
   onCopy: (msg: string) => void
   onEdit: (item: HistoryItem) => void
+  onMerge: (items: HistoryItem[]) => void
 }
 
-export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
+export default function HistoryList({ onCopy, onEdit, onMerge }: HistoryListProps) {
   const { t } = useI18n()
   const historyItems = useStore((s) => s.historyItems)
+  const historyLoading = useStore((s) => s.historyLoading)
+  const historyError = useStore((s) => s.historyError)
+  const loadHistory = useStore((s) => s.loadHistory)
+  const contentType = useStore((s) => s.contentType)
+  const setContentType = useStore((s) => s.setContentType)
   const setConfirmClearAll = useStore((s) => s.setConfirmClearAll)
   const currentPage = useStore((s) => s.currentPage)
   const searchQuery = useStore((s) => s.searchQuery)
@@ -32,6 +39,8 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
   const allSelected = historyItems.length > 0 && selectedIds.size === historyItems.length
   const pinnedFavorites = currentPage === 'favorites' ? historyItems.filter((item) => item.is_pinned) : []
   const regularItems = currentPage === 'favorites' ? historyItems.filter((item) => !item.is_pinned) : historyItems
+  const selectedItems = historyItems.filter((item) => selectedIds.has(item.id))
+  const canMerge = selectedItems.length >= 2 && selectedItems.every((item) => item.type === 'text' && item.content !== null)
 
   const handleToggleSelectionMode = () => {
     if (selectionMode) {
@@ -54,8 +63,9 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
     <div className="flex flex-col h-full">
       {/* Batch action bar */}
       {selectionMode && (
-        <div className="no-drag flex h-10 shrink-0 items-center justify-between border-b border-[#bedcff] bg-[#edf6ff] px-3 dark:border-[#0a84ff]/25 dark:bg-[#0a84ff]/10">
+        <div className="no-drag flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#bedcff] bg-[#edf6ff] px-3 py-2 dark:border-[#0a84ff]/25 dark:bg-[#0a84ff]/10">
           <div className="flex items-center gap-2">
+            <button type="button" disabled={!canMerge || historyLoading} title={t('history.mergeHint')} onClick={() => onMerge(selectedItems)} className="rounded bg-primary-500 px-2 py-1 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40">{t('history.merge')}</button>
             <button
               onClick={handleSelectAll}
               className="text-xs font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
@@ -124,15 +134,27 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
         </div>
       )}
 
+      {!selectionMode && (
+        <div className="no-drag flex shrink-0 items-center justify-between gap-1 border-b border-[#e6e6e9] px-2.5 py-1.5 dark:border-white/[0.07]">
+          <div className="flex gap-0.5" role="group" aria-label={t('history.types')}>
+            {(['all', 'text', 'url', 'image'] as HistoryContentType[]).map((type) => (
+              <button key={type} type="button" aria-pressed={contentType === type} onClick={() => setContentType(type)} className={`rounded px-2 py-1 text-[11px] ${contentType === type ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300' : 'text-gray-500 hover:bg-black/[0.04] dark:text-gray-400 dark:hover:bg-white/[0.06]'}`}>{t(`history.type.${type}`)}</button>
+            ))}
+          </div>
+          <button type="button" onClick={handleToggleSelectionMode} disabled={historyItems.length === 0 || historyLoading} className="rounded px-1.5 py-1 text-[11px] text-primary-500 disabled:opacity-40 dark:text-primary-400">{t('history.batchManage')}</button>
+        </div>
+      )}
+
       {/* Card list */}
-      <div className="flex-1 space-y-1.5 overflow-y-auto p-2.5">
-        {historyItems.length === 0 && (
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5" aria-busy={historyLoading}>
+        {historyError && <button type="button" onClick={() => void loadHistory()} className="w-full rounded p-2 text-xs text-red-500">{t('history.retry')}</button>}
+        {historyItems.length === 0 && !historyError && (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
             <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-black/[0.04] dark:bg-white/[0.06]">
               <Icon name={currentPage === 'favorites' ? 'star' : 'clipboard'} size={20} />
             </div>
             <p className="max-w-[240px] text-center text-xs leading-5">
-              {searchQuery
+              {historyLoading ? t('history.loading') : searchQuery || contentType !== 'all'
                 ? t('history.emptySearch')
                 : currentPage === 'favorites'
                 ? t('history.emptyFavorites')
@@ -167,12 +189,6 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
         {!selectionMode && historyItems.length > 0 && (
           <div className="flex justify-center gap-3 pt-1 text-center">
             <button
-              onClick={handleToggleSelectionMode}
-              className="no-drag rounded px-2 py-1.5 text-[11px] text-primary-500 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-primary-400 dark:hover:bg-primary-900/20"
-            >
-              {t('history.batchManage')}
-            </button>
-            <button
               onClick={() => setConfirmClearAll(true)}
               className="no-drag rounded px-2 py-1.5 text-[11px] text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-gray-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
             >
@@ -181,6 +197,7 @@ export default function HistoryList({ onCopy, onEdit }: HistoryListProps) {
           </div>
         )}
       </div>
+      {!selectionMode && <div className="shrink-0 border-t border-[#e6e6e9] px-2 py-1 text-center text-[10px] text-gray-500 dark:border-white/[0.07] dark:text-gray-400" title={t('history.keyboardMore')}>{t('history.keyboard')}</div>}
     </div>
   )
 }

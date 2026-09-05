@@ -1,9 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { HistoryContentType } from '../../shared/history-query'
 
 const api = {
   // History
-  getHistory: (search: string = '', filter: string = 'all', folder: string = '', sort: 'recent' | 'frequent' = 'recent') =>
-    ipcRenderer.invoke('history:list', search, filter, folder, sort),
+  getHistory: (search: string = '', filter: string = 'all', folder: string = '', sort: 'recent' | 'frequent' = 'recent', contentType: HistoryContentType = 'all') =>
+    ipcRenderer.invoke('history:list', search, filter, folder, sort, contentType),
   togglePin: (id: number) => ipcRenderer.invoke('history:togglePin', id),
   toggleFavorite: (id: number) => ipcRenderer.invoke('history:toggleFavorite', id),
   deleteHistory: (id: number) => ipcRenderer.invoke('history:delete', id),

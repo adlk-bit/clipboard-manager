@@ -28,14 +28,12 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
   const currentPage = useStore((s) => s.currentPage)
   const setConfirmDeleteId = useStore((s) => s.setConfirmDeleteId)
   const selectionMode = useStore((s) => s.selectionMode)
-  const selectedIds = useStore((s) => s.selectedIds)
+  const isSelected = useStore((s) => s.selectedIds.has(item.id))
   const toggleSelectId = useStore((s) => s.toggleSelectId)
   const favoriteFolders = useStore((s) => s.favoriteFolders)
-  const keyboardActiveId = useStore((s) => s.keyboardActiveId)
+  const isKeyboardActive = useStore((s) => s.keyboardActiveId === item.id)
   const sensitivePreviewEnabled = useStore((s) => s.sensitivePreview)
 
-  const isSelected = selectedIds.has(item.id)
-  const isKeyboardActive = keyboardActiveId === item.id
   const filter = currentPage === 'favorites' ? 'favorites' : 'all'
   const timeStr = formatTime(item.created_at, language)
   const imageUrl = item.image_path
@@ -63,17 +61,14 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    setCopied(true)
-    const result = await window.api.copyToClipboard(item.id)
-    if (!result.success) {
-      setCopied(false)
+    let success = false
+    try { success = (await window.api.copyToClipboard(item.id)).success } catch { /* show a safe error below */ }
+    if (!success) {
       onCopy(t('card.copyFailed'))
       return
     }
-    const label = item.type === 'text'
-      ? (item.content?.slice(0, 20) + (item.content && item.content.length > 20 ? '...' : '')) || t('card.text')
-      : t('card.image')
-    onCopy(t('card.copied', { label }))
+    setCopied(true)
+    onCopy(t('edit.copied'))
     setTimeout(() => setCopied(false), 800)
   }
 
@@ -133,7 +128,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
   }
 
   return (
-    <div ref={cardRef} className="history-card">
+    <div ref={cardRef} className="history-card" data-history-id={item.id} data-keyboard-active={isKeyboardActive}>
       <div
         onClick={handleClick}
         className={`no-drag group relative rounded-lg border px-2.5 py-2 transition-colors duration-100 ${
@@ -149,7 +144,12 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
         {/* Selection checkbox */}
         {selectionMode && (
           <div className="absolute left-2 top-2 z-10">
-            <div
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-label={t('history.selectItem')}
+              onClick={(event) => { event.stopPropagation(); toggleSelectId(item.id) }}
               className={`flex size-4 items-center justify-center rounded border transition-colors ${
                 isSelected
                   ? 'border-primary-500 bg-primary-500'
@@ -159,7 +159,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
               {isSelected && (
                 <Icon name="check" size={11} className="text-white" strokeWidth={3} />
               )}
-            </div>
+            </button>
           </div>
         )}
 

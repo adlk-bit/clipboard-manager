@@ -26,6 +26,8 @@ import {
   recordHistoryUse
 } from './database'
 import { normalizeHttpUrl } from '../../shared/url'
+import { normalizeHistoryContentType } from '../../shared/history-query'
+import { MAX_COPY_TEXT_LENGTH } from '../../shared/text-tools'
 import { isMonitorPaused, markClipboardHistoryItemCopied } from './clipboard-monitor'
 import { getHistoryImagesDir, getStickersDir, isPathInside } from './asset-paths'
 import { readBackupFile, removePreparedFiles, writePortableBackup } from './backup'
@@ -76,13 +78,14 @@ export function registerIpcHandlers(
   refreshApplicationLanguage: () => void,
 ) {
   // ---- History ----
-  ipcMain.handle('history:list', (_event, search: unknown, filter: unknown, folder: unknown = '', sort: unknown = 'recent') => {
+  ipcMain.handle('history:list', (_event, search: unknown, filter: unknown, folder: unknown = '', sort: unknown = 'recent', contentType: unknown = 'all') => {
     const safeFilter = filter === 'favorites' ? 'favorites' : 'all'
     return getHistoryList(
       safeString(search, 500),
       safeFilter,
       safeFilter === 'favorites' ? safeString(folder, 120) : '',
-      sort === 'frequent' ? 'frequent' : 'recent'
+      sort === 'frequent' ? 'frequent' : 'recent',
+      normalizeHistoryContentType(contentType)
     )
   })
 
@@ -143,7 +146,7 @@ export function registerIpcHandlers(
   })
 
   ipcMain.handle('clipboard:writeText', (_event, text: unknown) => {
-    if (typeof text !== 'string' || text.length === 0 || text.length > 10000) {
+    if (typeof text !== 'string' || text.length === 0 || text.length > MAX_COPY_TEXT_LENGTH) {
       return { success: false, type: 'text', error: 'Invalid text content' }
     }
 

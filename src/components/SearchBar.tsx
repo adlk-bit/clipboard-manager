@@ -11,11 +11,16 @@ export default function SearchBar() {
     <div className="relative">
       <Icon name="search" size={13} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[#8a8a90]" />
       <input
+        id="history-search"
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder={t('search.placeholder')}
         aria-label={t('search.placeholder')}
+        title={t('search.hint')}
+        maxLength={500}
+        autoComplete="off"
+        spellCheck={false}
         className="no-drag h-7 w-44 rounded-md border border-[#d8d8dd] bg-white pl-7 pr-7 text-xs text-[#333338] placeholder-[#929298] outline-none transition-colors focus:border-[#1683d8] dark:border-white/10 dark:bg-white/[0.07] dark:text-[#f2f2f4] dark:focus:border-[#53a9ff]"
       />
       {searchQuery && (

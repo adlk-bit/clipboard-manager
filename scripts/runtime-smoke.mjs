@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import initSqlJs from 'sql.js'
+import { runEfficiencySmoke } from './runtime-efficiency.mjs'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 const electronExe = process.env.RUNTIME_EXECUTABLE || path.join(repoRoot, 'node_modules', 'electron', 'dist', 'electron.exe')
@@ -36,16 +37,24 @@ async function seedRuntimeProfile() {
     'INSERT INTO clipboard_history (type, content, is_favorite, favorite_folder, favorite_tags) VALUES (?, ?, 1, ?, ?)',
     ['text', '客户手机 13812345678', '工作', '客户,紧急']
   )
+  database.run('UPDATE clipboard_history SET is_pinned = 1 WHERE id = 1')
+  for (const content of ['Alpha\n\nBeta\nAlpha', 'Gamma\nBeta', 'https://example.com/path', 'Budget 100% A_B']) {
+    database.run('INSERT INTO clipboard_history (type, content) VALUES (?, ?)', ['text', content])
+  }
+  const fixtureImage = path.join(profileDir, 'images', 'fixture.png')
+  await mkdir(path.dirname(fixtureImage), { recursive: true })
+  await writeFile(fixtureImage, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'))
+  database.run('INSERT INTO clipboard_history (type, image_path) VALUES (?, ?)', ['image', fixtureImage])
   await writeFile(path.join(profileDir, 'clipboard.db'), Buffer.from(database.export()))
   database.close()
 }
 
-async function waitForRenderer(port) {
+async function waitForRenderer(port, type = 'page') {
   const deadline = Date.now() + 20_000
   while (Date.now() < deadline) {
     try {
       const targets = await fetch(`http://127.0.0.1:${port}/json`).then((response) => response.json())
-      const target = targets.find((item) => item.type === 'page' && item.webSocketDebuggerUrl)
+      const target = targets.find((item) => item.type === type && item.webSocketDebuggerUrl)
       if (target) return target.webSocketDebuggerUrl
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 150))
@@ -116,8 +125,10 @@ async function waitForApi(cdp) {
 }
 
 async function runElectron(port, assertion) {
+  const testClipboard = process.env.RUNTIME_COPY_TESTS === '1'
   const child = spawn(electronExe, [
     `--remote-debugging-port=${port}`,
+    ...(testClipboard ? [`--inspect=127.0.0.1:${port + 100}`] : []),
     `--user-data-dir=${profileDir}`,
     ...(isPackagedRuntime ? [] : [repoRoot]),
     '--runtime-smoke-test',
@@ -126,6 +137,7 @@ async function runElectron(port, assertion) {
     env: { ...process.env, CLIPBOARD_MANAGER_USER_DATA_DIR: profileDir },
   })
   let stderr = ''
+  let mainDebugger
   child.stderr.on('data', (chunk) => { stderr += chunk.toString() })
 
   try {
@@ -133,6 +145,34 @@ async function runElectron(port, assertion) {
     const cdp = await connect(debuggerUrl)
     try {
       await waitForApi(cdp)
+      if (testClipboard) {
+        mainDebugger = await connect(await waitForRenderer(port + 100, 'node'))
+        cdp.resizeWindow = async (width, height) => {
+          await mainDebugger.evaluate(`process.getBuiltinModule('module').createRequire(process.cwd() + '/runtime.cjs')('electron').BrowserWindow.getAllWindows()[0].setSize(${width}, ${height})`)
+        }
+        cdp.verifyHiddenWindow = async () => {
+          const result = await mainDebugger.evaluate("process.getBuiltinModule('module').createRequire(process.cwd() + '/runtime.cjs')('electron').BrowserWindow.getAllWindows()[0].isVisible()")
+          assert.equal(result.result?.value, false, 'Quick copy must hide the window')
+        }
+        const captured = await mainDebugger.evaluate(`(() => {
+          const electron = process.getBuiltinModule('module').createRequire(process.cwd() + '/runtime.cjs')('electron')
+          const cb = electron.clipboard
+          if (cb.availableFormats().some(format => !['text/plain', 'text/html', 'text/rtf', 'image/png'].includes(format))) return false
+          globalThis.__smokeClipboard = { cb, data: { text: cb.readText(), html: cb.readHTML(), rtf: cb.readRTF(), image: cb.readImage() }, expected: null }
+          return true
+        })()`)
+        if (captured.result?.value === true) {
+          cdp.verifyClipboard = async (expected) => {
+            const result = await mainDebugger.evaluate(`(() => {
+              const state = globalThis.__smokeClipboard
+              const matches = state.cb.readText() === ${JSON.stringify(expected)}
+              if (matches) state.expected = ${JSON.stringify(expected)}
+              return matches
+            })()`)
+            assert.equal(result.result?.value, true, 'OS clipboard must match the expected synthetic text')
+          }
+        } else console.log('OS clipboard copy checks skipped: preserving unsupported clipboard formats.')
+      }
       await assertion(cdp)
     } finally {
       cdp.close()
@@ -140,6 +180,22 @@ async function runElectron(port, assertion) {
   } catch (error) {
     throw new Error(`${error.message}\nElectron stderr:\n${stderr}`)
   } finally {
+    if (mainDebugger) {
+      try {
+        const restored = await mainDebugger.evaluate(`(() => {
+          const state = globalThis.__smokeClipboard
+          let restored = true
+          if (state && state.expected !== null && state.cb.readText() === state.expected) {
+            state.cb.write(state.data)
+            restored = state.cb.readText() === state.data.text && state.cb.readHTML() === state.data.html && state.cb.readRTF() === state.data.rtf
+          }
+          delete globalThis.__smokeClipboard
+          return restored
+        })()`)
+        assert.equal(restored.result?.value, true, 'Test clipboard restoration failed')
+      } catch { console.warn('Could not restore the test clipboard; please inspect the last copy operation.'); process.exitCode = 1 }
+      finally { mainDebugger.close() }
+    }
     child.kill()
     await new Promise((resolve) => child.once('exit', resolve))
   }
@@ -148,6 +204,19 @@ async function runElectron(port, assertion) {
 try {
   await seedRuntimeProfile()
   await runElectron(9321, async (cdp) => {
+    if (process.env.RUNTIME_EFFICIENCY_ONLY === '1') {
+      const setup = await cdp.evaluate(`(async () => {
+        const deadline = Date.now() + 5_000
+        while (!document.querySelector('button[aria-label="设置"]') && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50))
+        document.querySelector('button[aria-label="设置"]').click()
+        await new Promise(resolve => setTimeout(resolve, 200))
+        Array.from(document.querySelectorAll('button')).find(button => button.textContent.trim() === 'English').click()
+        await new Promise(resolve => setTimeout(resolve, 200))
+      })()`)
+      assert.equal(setup.exceptionDetails, undefined)
+      await runEfficiencySmoke(cdp)
+      return
+    }
     const initial = await cdp.evaluate('window.api.getMonitorPaused()')
     assert.equal(initial.result.value, false)
 
@@ -189,7 +258,7 @@ try {
       pinButton?.click()
       const deadline = Date.now() + 2_000
       let applied = await window.api.getWindowAlwaysOnTop()
-      while (!applied && Date.now() < deadline) {
+      while ((!applied || pinButton?.getAttribute('aria-pressed') !== 'true') && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 25))
         applied = await window.api.getWindowAlwaysOnTop()
       }
@@ -352,13 +421,15 @@ try {
     })()`)
     assert.equal(restoredDarkMode.result.value, 'false')
 
+    await runEfficiencySmoke(cdp)
+
     const paused = await cdp.evaluate('window.api.setMonitorPaused(true)')
     assert.equal(paused.result.value, true)
     // Database writes are deliberately debounced to batch rapid clipboard events.
     await new Promise((resolve) => setTimeout(resolve, 800))
   })
 
-  await runElectron(9322, async (cdp) => {
+  if (process.env.RUNTIME_EFFICIENCY_ONLY !== '1') await runElectron(9322, async (cdp) => {
     const restored = await cdp.evaluate('window.api.getMonitorPaused()')
     assert.equal(restored.result.value, true)
     const restoredFeatureSettings = await cdp.evaluate(`(async () => ({
@@ -388,7 +459,7 @@ try {
     assert.equal(resumed.result.value, false)
   })
 
-  console.log('Runtime smoke passed: sensitive previews, metadata search, persistent always-on-top, Emoji UI, phone device UI/service, settings, validation, and pause persistence work across restart.')
+  if (process.env.RUNTIME_EFFICIENCY_ONLY !== '1') console.log('Runtime smoke passed: sensitive previews, metadata search, persistent always-on-top, Emoji UI, phone device UI/service, settings, validation, and pause persistence work across restart.')
 } finally {
   await rm(profileDir, { recursive: true, force: true })
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from './components/Layout'
 import Sidebar from './components/Sidebar'
 import HistoryList from './components/HistoryList'
@@ -24,6 +24,7 @@ export default function App() {
   const confirmBatchDelete = useStore((s) => s.confirmBatchDelete)
   const historyItems = useStore((s) => s.historyItems)
   const selectionMode = useStore((s) => s.selectionMode)
+  const historyLoading = useStore((s) => s.historyLoading)
   const keyboardActiveId = useStore((s) => s.keyboardActiveId)
   const setKeyboardActiveId = useStore((s) => s.setKeyboardActiveId)
   const loadMonitorPaused = useStore((s) => s.loadMonitorPaused)
@@ -31,12 +32,14 @@ export default function App() {
 
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'info' } | null>(null)
   const [toastKey, setToastKey] = useState(0)
-  const [editCopyItem, setEditCopyItem] = useState<HistoryItem | null>(null)
+  const [editCopyItems, setEditCopyItems] = useState<HistoryItem[] | null>(null)
+  const copyingRef = useRef(false)
+  const openEditor = useCallback((item: HistoryItem) => setEditCopyItems([item]), [])
 
   const showToast = useCallback((message: string, type: 'success' | 'info' = 'success') => {
     setToastKey(k => k + 1)
-    setToast({ id: toastKey, message, type })
-  }, [toastKey])
+    setToast({ id: Date.now(), message, type })
+  }, [])
 
   const clearToast = useCallback(() => {
     setToast(null)
@@ -56,7 +59,7 @@ export default function App() {
       if (state.currentPage === 'all' || state.currentPage === 'favorites') {
         state.loadHistory(state.searchQuery, state.currentPage === 'favorites' ? 'favorites' : 'all')
       }
-      state.loadHistoryStats()
+      if (state.currentPage === 'settings') void state.loadHistoryStats()
     })
   }, [])
 
@@ -64,7 +67,44 @@ export default function App() {
     const handleKeyDown = async (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable
-      if (isTyping || selectionMode || (currentPage !== 'all' && currentPage !== 'favorites') || event.ctrlKey || event.altKey || event.metaKey) return
+      const isSearch = target?.id === 'history-search'
+      if (event.isComposing || event.defaultPrevented || editCopyItems || confirmDeleteId !== null || confirmClearAll || confirmBatchDelete || document.querySelector('[role="dialog"]')) return
+      if (currentPage !== 'all' && currentPage !== 'favorites') return
+      const state = useStore.getState()
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'f' && (!isTyping || isSearch)) {
+        event.preventDefault()
+        const input = document.getElementById('history-search') as HTMLInputElement | null
+        input?.focus(); input?.select()
+        return
+      }
+      if (isTyping && !isSearch) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        if (selectionMode) state.setSelectionMode(false)
+        else if (state.searchQuery) state.setSearchQuery('')
+        else await window.api.hideWindow()
+        return
+      }
+      if (selectionMode || historyLoading) return
+
+      const copyItem = async (item: HistoryItem | undefined) => {
+        if (!item || copyingRef.current || event.repeat) return
+        copyingRef.current = true
+        try {
+          const result = await window.api.copyToClipboard(item.id)
+          if (!result.success) throw new Error('Copy failed')
+          setKeyboardActiveId(null)
+          await window.api.hideWindow()
+        } catch { showToast(t('card.copyFailed'), 'info') }
+        finally { copyingRef.current = false }
+      }
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && /^[1-9]$/.test(event.key)) {
+        event.preventDefault()
+        await copyItem(historyItems[Number(event.key) - 1])
+        return
+      }
+      if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return
+      if (target?.closest('button, a, [role="checkbox"]')) return
 
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         if (historyItems.length === 0) return
@@ -78,15 +118,15 @@ export default function App() {
         return
       }
 
-      if (event.key === 'Enter' && keyboardActiveId !== null) {
-        const item = historyItems.find((historyItem) => historyItem.id === keyboardActiveId)
-        if (!item) return
+      if (event.key === ' ' && !isSearch && keyboardActiveId !== null) {
+        const item = historyItems.find((entry) => entry.id === keyboardActiveId)
+        if (item?.type === 'text') { event.preventDefault(); openEditor(item) }
+        return
+      }
+
+      if (event.key === 'Enter') {
         event.preventDefault()
-        const result = await window.api.copyToClipboard(item.id)
-        if (result.success) {
-          setKeyboardActiveId(null)
-          await window.api.hideWindow()
-        }
+        await copyItem(historyItems.find((item) => item.id === keyboardActiveId) || historyItems[0])
       }
     }
 
@@ -97,7 +137,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('blur', clearKeyboardSelection)
     }
-  }, [currentPage, historyItems, keyboardActiveId, selectionMode, setKeyboardActiveId])
+  }, [currentPage, historyItems, keyboardActiveId, selectionMode, historyLoading, setKeyboardActiveId, editCopyItems, confirmDeleteId, confirmClearAll, confirmBatchDelete, openEditor, showToast, t])
 
   return (
     <Layout>
@@ -117,8 +157,8 @@ export default function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-          {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList onCopy={showToast} onEdit={setEditCopyItem} />}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList onCopy={showToast} onEdit={openEditor} onMerge={setEditCopyItems} />}
           {currentPage === 'emoji' && <EmojiPicker onCopy={showToast} />}
           {currentPage === 'stickers' && <StickerGrid onCopy={showToast} />}
           {currentPage === 'devices' && <DevicesPanel />}
@@ -134,11 +174,11 @@ export default function App() {
       {confirmDeleteId !== null && <ConfirmDialog type="delete" />}
       {confirmClearAll && <ConfirmDialog type="clearAll" />}
       {confirmBatchDelete && <ConfirmDialog type="batchDelete" />}
-      {editCopyItem && (
+      {editCopyItems && (
         <EditCopyDialog
-          key={editCopyItem.id}
-          item={editCopyItem}
-          onClose={() => setEditCopyItem(null)}
+          key={editCopyItems.map((item) => item.id).join(',')}
+          items={editCopyItems}
+          onClose={() => setEditCopyItems(null)}
           onCopied={showToast}
         />
       )}

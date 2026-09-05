@@ -5,6 +5,7 @@ import fs from 'fs'
 import { createHash, randomUUID } from 'crypto'
 import type { BackupSnapshot, BackupHistoryItem, BackupStickerItem } from './backup'
 import { getAppUserDataDir, getHistoryImagesDir, getStickersDir, isPathInside } from './asset-paths'
+import { buildHistorySearch, matchesHistoryContentType, type HistoryContentType } from '../../shared/history-query'
 
 let db: SqlJsDatabase
 const DB_PATH = path.join(getAppUserDataDir(), 'clipboard.db')
@@ -353,7 +354,8 @@ export function getHistoryList(
   search: string = '',
   filter: 'all' | 'favorites' = 'all',
   folder: string = '',
-  sort: 'recent' | 'frequent' = 'recent'
+  sort: 'recent' | 'frequent' = 'recent',
+  contentType: HistoryContentType = 'all'
 ): HistoryItem[] {
   if (!db) return []
   try {
@@ -368,11 +370,9 @@ export function getHistoryList(
       }
     }
 
-    if (search) {
-      query += ' AND (content LIKE ? OR favorite_folder LIKE ? OR favorite_tags LIKE ?)'
-      const term = `%${search}%`
-      params.push(term, term, term)
-    }
+    const searchQuery = buildHistorySearch(search)
+    query += searchQuery.clause
+    params.push(...searchQuery.params)
 
     if (filter === 'favorites') {
       query += ' ORDER BY is_pinned DESC, favorite_sort_order ASC, created_at DESC'
@@ -389,7 +389,8 @@ export function getHistoryList(
 
     const results: HistoryItem[] = []
     while (stmt.step()) {
-      results.push(stmt.getAsObject() as unknown as HistoryItem)
+      const item = stmt.getAsObject() as unknown as HistoryItem
+      if (matchesHistoryContentType(item, contentType)) results.push(item)
     }
     stmt.free()
     return results
