@@ -1,3 +1,4 @@
+import CaptureSettings from './CaptureSettings'
 import { useEffect, useState } from 'react'
 import { useStore } from '../stores/useStore'
 import ExportImport from './ExportImport'
@@ -186,6 +187,7 @@ export default function SettingsPanel() {
         </div>
       </div>
 
+      <CaptureSettings />
       <ExportImport />
 
       <div className="pt-0.5 text-center">

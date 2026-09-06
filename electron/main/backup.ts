@@ -1,10 +1,11 @@
+import { validateTemplate, normalizeSourceApp, type TextTemplate } from '../../shared/productivity'
 import { createHash, randomUUID } from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate'
 
 export const BACKUP_FORMAT = 'clipboard-manager-backup'
-export const BACKUP_FORMAT_VERSION = 1
+export const BACKUP_FORMAT_VERSION = 2
 
 const MAX_BACKUP_BYTES = 1024 * 1024 * 1024
 const MAX_ARCHIVE_ENTRIES = 5000
@@ -23,6 +24,9 @@ export interface BackupHistoryItem {
   use_count: number
   last_used_at: string
   content_hash: string
+  source_app?: string
+  ocr_text?: string
+  ocr_language?: string
 }
 
 export interface BackupStickerItem {
@@ -35,6 +39,7 @@ export interface BackupSnapshot {
   history: BackupHistoryItem[]
   stickers: BackupStickerItem[]
   settings: Record<string, string>
+  templates?: TextTemplate[]
 }
 
 interface PortableHistoryItem extends Omit<BackupHistoryItem, 'image_path'> {
@@ -49,18 +54,20 @@ interface PortableStickerItem extends Omit<BackupStickerItem, 'image_path'> {
 
 interface BackupManifest {
   format: typeof BACKUP_FORMAT
-  format_version: typeof BACKUP_FORMAT_VERSION
+  format_version: number
   app_version: string
   exported_at: string
   history: PortableHistoryItem[]
   stickers: PortableStickerItem[]
   settings: Record<string, string>
+  templates?: TextTemplate[]
 }
 
 export interface BackupExportResult {
   filePath: string
   historyCount: number
   stickerCount: number
+  templateCount: number
   skippedFiles: number
 }
 
@@ -138,6 +145,7 @@ export function writePortableBackup(filePath: string, snapshot: BackupSnapshot, 
       use_count: item.use_count,
       last_used_at: item.last_used_at,
       content_hash: item.content_hash || imageChecksum,
+      source_app: item.source_app || '', ocr_text: item.ocr_text || '', ocr_language: item.ocr_language || '',
     })
   })
 
@@ -166,6 +174,7 @@ export function writePortableBackup(filePath: string, snapshot: BackupSnapshot, 
     history: portableHistory,
     stickers: portableStickers,
     settings: snapshot.settings,
+    templates: snapshot.templates || [],
   }
   entries['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2))
 
@@ -179,6 +188,7 @@ export function writePortableBackup(filePath: string, snapshot: BackupSnapshot, 
     filePath,
     historyCount: portableHistory.length,
     stickerCount: portableStickers.length,
+    templateCount: snapshot.templates?.length || 0,
     skippedFiles,
   }
 }
@@ -215,6 +225,9 @@ function normalizeHistoryItem(value: unknown): BackupHistoryItem | null {
     use_count: Math.max(1, Math.min(1_000_000, Number(item.use_count) || 1)),
     last_used_at: safeTimestamp(item.last_used_at || item.created_at),
     content_hash: safeText(item.content_hash, 128),
+    source_app: normalizeSourceApp(item.source_app),
+    ocr_text: item.type === 'image' ? safeText(item.ocr_text, 50000) : '',
+    ocr_language: item.type === 'image' ? safeText(item.ocr_language, 40) : '',
   }
 }
 
@@ -252,7 +265,7 @@ function parsePortableBackup(buffer: Buffer, imagesDir: string, stickersDir: str
   if (!manifestData) throw new Error('备份缺少 manifest.json。')
 
   const parsed = JSON.parse(strFromU8(manifestData)) as Partial<BackupManifest>
-  if (parsed.format !== BACKUP_FORMAT || parsed.format_version !== BACKUP_FORMAT_VERSION) {
+  if (parsed.format !== BACKUP_FORMAT || ![1, BACKUP_FORMAT_VERSION].includes(parsed.format_version || 0)) {
     throw new Error('不支持的备份格式或版本。')
   }
 
@@ -306,11 +319,17 @@ function parsePortableBackup(buffer: Buffer, imagesDir: string, stickersDir: str
   const settings: Record<string, string> = {}
   if (parsed.settings && typeof parsed.settings === 'object') {
     for (const [key, value] of Object.entries(parsed.settings)) {
-      if (typeof value === 'string') settings[key] = value.slice(0, 1000)
+      if (typeof value === 'string') settings[key] = value.slice(0, 10000)
     }
   }
 
-  return { snapshot: { history, stickers, settings }, createdFiles, skippedItems, source: 'portable' }
+  const templates: TextTemplate[] = []
+  if (Array.isArray(parsed.templates) && parsed.templates.length > 1000) { removePreparedFiles(createdFiles); throw new Error('Too many templates') }
+  for (const raw of Array.isArray(parsed.templates) ? parsed.templates : []) {
+    try { const safe = validateTemplate(raw?.title, raw?.body); templates.push({ ...safe, id: 0, created_at: safeTimestamp(raw.created_at), updated_at: safeTimestamp(raw.updated_at) }) }
+    catch { skippedItems++ }
+  }
+  return { snapshot: { history, stickers, settings, templates }, createdFiles, skippedItems, source: 'portable' }
 }
 
 function parseLegacyJson(buffer: Buffer, imagesDir: string): PreparedBackup {

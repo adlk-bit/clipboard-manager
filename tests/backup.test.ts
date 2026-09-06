@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { readBackupFile, removePreparedFiles, writePortableBackup, type BackupSnapshot } from '../electron/main/backup'
 
 function makeWorkspace(): { root: string; images: string; stickers: string } {
@@ -33,10 +34,12 @@ test('portable backup round-trips text, images, stickers, metadata and settings'
           type: 'image', content: null, image_path: sourceImage, is_pinned: 0, is_favorite: 0,
           created_at: '2026-01-03T00:00:00.000Z', favorite_folder: '', favorite_tags: '',
           favorite_sort_order: 0, use_count: 2, last_used_at: '2026-01-04T00:00:00.000Z', content_hash: '',
+          source_app: 'snippingtool.exe', ocr_text: '本地 2048', ocr_language: 'zh-Hans-CN',
         },
       ],
       stickers: [{ name: 'wave', image_path: sourceSticker, created_at: '2026-01-05T00:00:00.000Z' }],
-      settings: { retention_days: '5', dark_mode: 'true', max_history_items: '500' },
+      settings: { retention_days: '5', dark_mode: 'true', max_history_items: '500', excluded_apps: '["keepass.exe"]' },
+      templates: [{ id: 5, title: 'Reply', body: 'Hello {{name}}', created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-02T00:00:00.000Z' }],
     }
 
     const backupPath = path.join(workspace.root, 'sample.clipbackup')
@@ -54,6 +57,12 @@ test('portable backup round-trips text, images, stickers, metadata and settings'
     assert.equal(restored.snapshot.history[0].favorite_tags, 'reply,email')
     assert.equal(restored.snapshot.history[0].use_count, 7)
     assert.equal(restored.snapshot.settings.dark_mode, 'true')
+    assert.equal(exported.templateCount, 1)
+    assert.equal(restored.snapshot.templates?.[0].body, 'Hello {{name}}')
+    assert.equal(restored.snapshot.history[1].source_app, 'snippingtool.exe')
+    assert.equal(restored.snapshot.history[1].ocr_text, '本地 2048')
+    assert.equal(restored.snapshot.history[1].ocr_language, 'zh-Hans-CN')
+    assert.equal(restored.snapshot.settings.excluded_apps, '["keepass.exe"]')
     assert.ok(restored.snapshot.history[1].image_path)
     assert.ok(fs.existsSync(restored.snapshot.history[1].image_path!))
     assert.equal(restored.snapshot.stickers[0].name, 'wave')
@@ -62,6 +71,23 @@ test('portable backup round-trips text, images, stickers, metadata and settings'
   } finally {
     fs.rmSync(workspace.root, { recursive: true, force: true })
   }
+})
+
+test('version 1 backups remain readable without productivity fields; future formats are rejected', () => {
+  const workspace = makeWorkspace()
+  try {
+    const file = path.join(workspace.root, 'old.clipbackup')
+    writePortableBackup(file, { history: [], stickers: [], settings: {} }, '1.2.0')
+    const archive = unzipSync(fs.readFileSync(file))
+    const manifest = JSON.parse(strFromU8(archive['manifest.json']))
+    delete manifest.templates; manifest.format_version = 1
+    archive['manifest.json'] = strToU8(JSON.stringify(manifest))
+    fs.writeFileSync(file, zipSync(archive))
+    assert.deepEqual(readBackupFile(file, workspace.images, workspace.stickers).snapshot.templates, [])
+    manifest.format_version = 999; archive['manifest.json'] = strToU8(JSON.stringify(manifest))
+    fs.writeFileSync(file, zipSync(archive))
+    assert.throws(() => readBackupFile(file, workspace.images, workspace.stickers), /版本/)
+  } finally { fs.rmSync(workspace.root, { recursive: true, force: true }) }
 })
 
 test('legacy JSON import copies valid images and preserves available metadata', () => {

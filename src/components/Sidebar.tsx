@@ -6,6 +6,7 @@ import { useI18n } from '../lib/i18n'
 const navItems: { id: PageView; icon: IconName }[] = [
   { id: 'all', icon: 'clipboard' },
   { id: 'favorites', icon: 'star' },
+  { id: 'templates', icon: 'edit' },
   { id: 'emoji', icon: 'smile' },
   { id: 'stickers', icon: 'image' },
   { id: 'devices', icon: 'devices' },

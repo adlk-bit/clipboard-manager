@@ -35,8 +35,11 @@ jobs:
       - name: Run desktop tests
         run: npm test
 
-      - name: Type-check
-        run: npx tsc --noEmit
+      - name: Type-check main process
+        run: npx tsc --noEmit -p tsconfig.node.json
+
+      - name: Type-check renderer
+        run: npx tsc --noEmit -p tsconfig.web.json
 
       - name: Build desktop application
         run: npm run build

@@ -1,3 +1,6 @@
+import TemplatesPanel, { TemplateEditor } from './components/TemplatesPanel'
+import OcrDialog from './components/OcrDialog'
+import QueueBar from './components/QueueBar'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Layout from './components/Layout'
 import Sidebar from './components/Sidebar'
@@ -15,7 +18,7 @@ import type { HistoryItem } from './types'
 import { useI18n } from './lib/i18n'
 
 export default function App() {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const currentPage = useStore((s) => s.currentPage)
   const loadHistory = useStore((s) => s.loadHistory)
   const loadSettings = useStore((s) => s.loadSettings)
@@ -33,6 +36,8 @@ export default function App() {
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'info' } | null>(null)
   const [toastKey, setToastKey] = useState(0)
   const [editCopyItems, setEditCopyItems] = useState<HistoryItem[] | null>(null)
+  const [templateItem, setTemplateItem] = useState<HistoryItem | null>(null)
+  const [ocrItem, setOcrItem] = useState<HistoryItem | null>(null)
   const copyingRef = useRef(false)
   const openEditor = useCallback((item: HistoryItem) => setEditCopyItems([item]), [])
 
@@ -156,9 +161,11 @@ export default function App() {
           )}
         </div>
 
+        <QueueBar />
         {/* Content */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList onCopy={showToast} onEdit={openEditor} onMerge={setEditCopyItems} />}
+          {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList onCopy={showToast} onEdit={openEditor} onMerge={setEditCopyItems} onTemplate={setTemplateItem} onOcr={setOcrItem} />}
+          {currentPage === 'templates' && <TemplatesPanel onCopied={showToast} />}
           {currentPage === 'emoji' && <EmojiPicker onCopy={showToast} />}
           {currentPage === 'stickers' && <StickerGrid onCopy={showToast} />}
           {currentPage === 'devices' && <DevicesPanel />}
@@ -167,6 +174,8 @@ export default function App() {
 
       </div>
 
+      {templateItem && <TemplateEditor body={templateItem.content || ''} onClose={() => setTemplateItem(null)} onSaved={() => showToast(language === 'en' ? 'Template saved' : '模板已保存')} />}
+      {ocrItem && <OcrDialog item={ocrItem} onClose={() => setOcrItem(null)} onCopied={showToast} />}
       {/* Toast notification */}
       {toast && <Toast key={toastKey} message={toast.message} type={toast.type} onClose={clearToast} />}
 

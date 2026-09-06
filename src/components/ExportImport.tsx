@@ -18,7 +18,7 @@ export default function ExportImport() {
       const result = await window.api.exportHistory()
       if (result) {
         const skipped = result.skippedFiles > 0 ? t('backup.skippedFiles', { count: result.skippedFiles }) : ''
-        setMessage(t('backup.exported', { history: result.historyCount, stickers: result.stickerCount, skipped }))
+        setMessage(t('backup.exported', { history: result.historyCount, stickers: result.stickerCount, templates: result.templateCount, skipped }))
       }
     } catch (e) {
       setMessage(t('backup.exportFailed'))
@@ -35,7 +35,7 @@ export default function ExportImport() {
       if (result.status === 'success') {
         const mode = result.mode === 'replace' ? t('backup.replace') : t('backup.merge')
         const skipped = result.skippedItems + result.skippedDuplicates
-        setMessage(t('backup.imported', { mode, history: result.historyCount, stickers: result.stickerCount, skipped: skipped > 0 ? t('backup.skippedItems', { count: skipped }) : '' }))
+        setMessage(t('backup.imported', { mode, history: result.historyCount, stickers: result.stickerCount, templates: result.templateCount, skipped: skipped > 0 ? t('backup.skippedItems', { count: skipped }) : '' }))
         await Promise.all([loadHistory(), loadStickers(), loadSettings()])
       } else if (result.status === 'error') {
         setMessage(t('backup.importFailed', { error: result.error }))

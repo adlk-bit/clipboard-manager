@@ -22,8 +22,8 @@ android {
         applicationId = "com.clipboard.manager.companion"
         minSdk = 29
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.2.0"
+        versionCode = 8
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "android.app.InstrumentationTestRunner"
     }

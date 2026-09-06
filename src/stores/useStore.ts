@@ -13,6 +13,8 @@ interface AppState {
   historyLoading: boolean
   historyError: boolean
   _historyRequest: number
+  sourceApp: string
+  setSourceApp: (source: string) => void
   contentType: HistoryContentType
   setContentType: (type: HistoryContentType) => void
   setHistoryItems: (items: HistoryItem[]) => void
@@ -88,7 +90,7 @@ export const useStore = create<AppState>((set, get) => ({
     const timer = get()._searchTimer
     if (timer) clearTimeout(timer)
     set({ currentPage: page, searchQuery: '', selectionMode: false, selectedIds: new Set(), keyboardActiveId: null,
-      contentType: 'all', historyItems: [], historyLoading: false, historyError: false, _searchTimer: null, _historyRequest: get()._historyRequest + 1 })
+      sourceApp: '', contentType: 'all', historyItems: [], historyLoading: false, historyError: false, _searchTimer: null, _historyRequest: get()._historyRequest + 1 })
     if (page === 'stickers') {
       get().loadStickers()
     } else if (page === 'settings') {
@@ -105,6 +107,8 @@ export const useStore = create<AppState>((set, get) => ({
   historyLoading: false,
   historyError: false,
   _historyRequest: 0,
+  sourceApp: '',
+  setSourceApp: (sourceApp) => { set({ sourceApp, keyboardActiveId: null, selectedIds: new Set() }); void get().loadHistory() },
   contentType: 'all',
   setContentType: (type) => {
     set({ contentType: type, keyboardActiveId: null, selectedIds: new Set() })
@@ -144,7 +148,7 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const folder = activeFilter === 'favorites' ? state.favoriteFolder : ''
       const sort = activeFilter === 'all' ? state.historySort : 'recent'
-      const items = await window.api.getHistory(query, activeFilter, folder, sort, state.contentType)
+      const items = await window.api.getHistory(query, activeFilter, folder, sort, state.contentType, state.sourceApp)
       if (get()._historyRequest !== request) return
       const visibleIds = new Set(items.map((item) => item.id))
       set({ historyItems: items, historyLoading: false,

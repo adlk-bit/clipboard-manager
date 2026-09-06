@@ -1,3 +1,4 @@
+import type { TextTemplate, OcrStatus, OcrResult, QueueStatus } from '../../shared/productivity'
 import type { HistoryContentType } from '../../shared/history-query'
 
 export interface HistoryItem {
@@ -13,6 +14,9 @@ export interface HistoryItem {
   favorite_sort_order: number
   use_count: number
   last_used_at: string
+  source_app?: string
+  ocr_text?: string
+  ocr_language?: string
   content_hash: string
 }
 
@@ -73,6 +77,7 @@ export interface BackupExportResult {
   filePath: string
   historyCount: number
   stickerCount: number
+  templateCount: number
   skippedFiles: number
 }
 
@@ -85,14 +90,32 @@ export type BackupImportResult =
       source: 'portable' | 'legacy-json'
       historyCount: number
       stickerCount: number
+      templateCount: number
       skippedItems: number
       skippedDuplicates: number
     }
 
-export type PageView = 'all' | 'favorites' | 'emoji' | 'stickers' | 'devices' | 'settings'
+export type PageView = 'all' | 'favorites' | 'emoji' | 'stickers' | 'devices' | 'settings' | 'templates'
 
 export interface ElectronApi {
-  getHistory: (search?: string, filter?: string, folder?: string, sort?: 'recent' | 'frequent', contentType?: HistoryContentType) => Promise<HistoryItem[]>
+  getTemplates: () => Promise<TextTemplate[]>
+  saveTemplate: (id: number | null, title: string, body: string) => Promise<TextTemplate>
+  deleteTemplate: (id: number) => Promise<void>
+  copyTemplate: (id: number, values: Record<string, string>) => Promise<boolean>
+  getSourceApps: () => Promise<string[]>
+  getExcludedApps: () => Promise<string[]>
+  setExcludedApps: (apps: string[]) => Promise<string[]>
+  getCaptureStatus: () => Promise<{ native: boolean; listener: boolean; notifications: number; reads: number; imageEncodes: number }>
+  getOcrStatus: () => Promise<OcrStatus>
+  recognizeImage: (id: number, language: string, force?: boolean) => Promise<OcrResult>
+  clearOcr: (id: number | null) => Promise<void>
+  getQueueStatus: () => Promise<QueueStatus>
+  startQueue: (ids: number[]) => Promise<QueueStatus>
+  controlQueue: (action: string) => Promise<QueueStatus>
+  onQueueChanged: (callback: (status: QueueStatus) => void) => () => void
+  onWindowTopmostChanged: (callback: (enabled: boolean) => void) => () => void
+
+  getHistory: (search?: string, filter?: string, folder?: string, sort?: 'recent' | 'frequent', contentType?: HistoryContentType, sourceApp?: string) => Promise<HistoryItem[]>
   togglePin: (id: number) => Promise<void>
   toggleFavorite: (id: number) => Promise<void>
   deleteHistory: (id: number) => Promise<void>

@@ -1,10 +1,36 @@
+import type { QueueStatus } from '../../shared/productivity'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { HistoryContentType } from '../../shared/history-query'
 
 const api = {
+  getTemplates: () => ipcRenderer.invoke('templates:list'),
+  saveTemplate: (id: number | null, title: string, body: string) => ipcRenderer.invoke('templates:save', id, title, body),
+  deleteTemplate: (id: number) => ipcRenderer.invoke('templates:delete', id),
+  copyTemplate: (id: number, values: Record<string, string>) => ipcRenderer.invoke('templates:copy', id, values),
+  getSourceApps: () => ipcRenderer.invoke('sources:list'),
+  getExcludedApps: () => ipcRenderer.invoke('sources:exclusions'),
+  setExcludedApps: (apps: string[]) => ipcRenderer.invoke('sources:setExclusions', apps),
+  getCaptureStatus: () => ipcRenderer.invoke('capture:status'),
+  getOcrStatus: () => ipcRenderer.invoke('ocr:status'),
+  recognizeImage: (id: number, language: string, force = false) => ipcRenderer.invoke('ocr:recognize', id, language, force),
+  clearOcr: (id: number | null) => ipcRenderer.invoke('ocr:clear', id),
+  getQueueStatus: () => ipcRenderer.invoke('queue:status'),
+  startQueue: (ids: number[]) => ipcRenderer.invoke('queue:start', ids),
+  controlQueue: (action: string) => ipcRenderer.invoke('queue:control', action),
+  onQueueChanged: (callback: (status: QueueStatus) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: QueueStatus) => callback(status)
+    ipcRenderer.on('queue:changed', listener)
+    return () => ipcRenderer.removeListener('queue:changed', listener)
+  },
+  onWindowTopmostChanged: (callback: (enabled: boolean) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, enabled: boolean) => callback(enabled)
+    ipcRenderer.on('window:topmost-changed', listener)
+    return () => ipcRenderer.removeListener('window:topmost-changed', listener)
+  },
+
   // History
-  getHistory: (search: string = '', filter: string = 'all', folder: string = '', sort: 'recent' | 'frequent' = 'recent', contentType: HistoryContentType = 'all') =>
-    ipcRenderer.invoke('history:list', search, filter, folder, sort, contentType),
+  getHistory: (search: string = '', filter: string = 'all', folder: string = '', sort: 'recent' | 'frequent' = 'recent', contentType: HistoryContentType = 'all', sourceApp: string = '') =>
+    ipcRenderer.invoke('history:list', search, filter, folder, sort, contentType, sourceApp),
   togglePin: (id: number) => ipcRenderer.invoke('history:togglePin', id),
   toggleFavorite: (id: number) => ipcRenderer.invoke('history:toggleFavorite', id),
   deleteHistory: (id: number) => ipcRenderer.invoke('history:delete', id),

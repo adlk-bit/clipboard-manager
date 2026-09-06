@@ -54,8 +54,8 @@
 
 前往 [Releases](https://github.com/adlk-bit/clipboard-manager/releases) 下载：
 
-- Windows：[ClipboardManager-Setup-1.2.0.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.0/ClipboardManager-Setup-1.2.0.exe)，双击运行安装。
-- Android：[ClipboardManager-Android-1.2.0.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.0/ClipboardManager-Android-1.2.0.apk)，允许浏览器或文件管理器“安装未知应用”后安装。
+- Windows：[ClipboardManager-Setup-1.2.1.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.1/ClipboardManager-Setup-1.2.1.exe)，双击运行安装。
+- Android：[ClipboardManager-Android-1.2.1.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.1/ClipboardManager-Android-1.2.1.apk)，允许浏览器或文件管理器“安装未知应用”后安装。
 
 ### 从源码运行
 
@@ -95,6 +95,20 @@ npm run dist
 Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/README_CN.md)。
 
 ---
+
+## 🆕 v1.2.1 更新内容
+
+上一轮改进说明中的五项后续功能已纳入 v1.2.1。上方 Windows 与 Android 下载链接已同步；Android 版本代码为 8，手机功能不变。
+
+- **常用短语与变量模板**：侧栏新建，或从文字历史保存为模板。填写 `{{姓名}}` 等变量，预览后复制；支持当前日期、时间默认值。
+- **顺序粘贴队列**：多选文字后建立队列，切到目标应用按 `Ctrl+Shift+Alt+V` 逐条粘贴；支持暂停、跳过、退一条和目标窗口校验。
+- **采集性能与置顶修复**：剪贴板变更通知结合轻量序号检查，避免重复编码静止图片；使用 Windows 原生窗口状态确认置顶。
+- **本地 OCR**：图片卡片点击 OCR，使用已安装的 Windows 识别语言；识别结果可搜索、修改后复制或清除索引。
+- **来源筛选与排除规则**：按应用筛选历史，在设置中排除指定进程名。来源未知且存在排除规则时跳过采集。
+
+模板、OCR 索引、来源和排除规则已纳入格式 2 备份；兼容导入旧格式。OCR 可能识别错误，复制前可校对。构建时自动编译小型 Windows 辅助程序，不捆绑 OCR 模型。
+
+使用方式与边界见 [本批效率功能说明](docs/productivity-next-batch.md)，下载和发布验证见 [v1.2.1 发布说明](docs/releases/v1.2.1.md)。
 
 ## 🆕 v1.2.0 更新内容
 

@@ -54,8 +54,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download:
 
-- Windows: [ClipboardManager-Setup-1.2.0.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.0/ClipboardManager-Setup-1.2.0.exe); run it to install.
-- Android: [ClipboardManager-Android-1.2.0.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.0/ClipboardManager-Android-1.2.0.apk); allow your browser or file manager to install unknown apps, then install it.
+- Windows: [ClipboardManager-Setup-1.2.1.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.1/ClipboardManager-Setup-1.2.1.exe); run it to install.
+- Android: [ClipboardManager-Android-1.2.1.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.1/ClipboardManager-Android-1.2.1.apk); allow your browser or file manager to install unknown apps, then install it.
 
 ### Build from Source
 
@@ -95,6 +95,20 @@ npm run dist
 See [android/README.md](android/README.md) for Android source, build, install, and privacy details.
 
 ---
+
+## 🆕 What's New in v1.2.1
+
+This release adds all five follow-up features from the improvement notes. The Windows and Android downloads above are synchronized to v1.2.1 (Android version code 8; phone features are unchanged).
+
+- **Phrases and variable templates:** create from the sidebar or save a text history item; fill `{{name}}` variables and preview before copying, with current date/time defaults.
+- **Sequential paste queue:** select text records, focus the destination and press `Ctrl+Shift+Alt+V` for each item. Pause, skip, rewind and target-window checks are included.
+- **Capture and topmost reliability:** clipboard notifications plus lightweight sequence checks avoid encoding unchanged images; native Windows state confirms always-on-top.
+- **Local OCR:** recognize images using installed Windows language features, search the resulting index, edit before copying, and clear indexes.
+- **Source filters and exclusions:** filter by app name and exclude process names in Settings. Unknown sources are skipped when exclusions are enabled.
+
+Backup format 2 includes templates, OCR indexes, sources and exclusions, while importing older formats. Review OCR text for recognition errors. Builds automatically compile a small Windows helper; no OCR model is bundled.
+
+See [usage and limits](docs/productivity-next-batch.md) and the [v1.2.1 release notes](docs/releases/v1.2.1.md).
 
 ## 🆕 What's New in v1.2.0
 

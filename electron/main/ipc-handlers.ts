@@ -1,3 +1,5 @@
+import { pasteQueue } from './paste-queue'
+import { applyAlwaysOnTop, getAlwaysOnTop } from './window-state'
 import { BrowserWindow, ipcMain, dialog, clipboard, nativeImage, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
@@ -60,17 +62,6 @@ function safeString(value: unknown, maxLength: number): string {
   return typeof value === 'string' ? value.slice(0, maxLength) : ''
 }
 
-async function setAndConfirmAlwaysOnTop(targetWindow: BrowserWindow, enabled: boolean): Promise<boolean> {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    if (targetWindow.isAlwaysOnTop() === enabled) return enabled
-    targetWindow.setAlwaysOnTop(enabled)
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    if (targetWindow.isAlwaysOnTop() === enabled) return enabled
-  }
-
-  return targetWindow.isAlwaysOnTop()
-}
-
 export function registerIpcHandlers(
   updateHotkey: (hotkey: string) => HotkeyUpdateResult,
   hideMainWindow: () => void,
@@ -78,14 +69,15 @@ export function registerIpcHandlers(
   refreshApplicationLanguage: () => void,
 ) {
   // ---- History ----
-  ipcMain.handle('history:list', (_event, search: unknown, filter: unknown, folder: unknown = '', sort: unknown = 'recent', contentType: unknown = 'all') => {
+  ipcMain.handle('history:list', (_event, search: unknown, filter: unknown, folder: unknown = '', sort: unknown = 'recent', contentType: unknown = 'all', sourceApp: unknown = '') => {
     const safeFilter = filter === 'favorites' ? 'favorites' : 'all'
     return getHistoryList(
       safeString(search, 500),
       safeFilter,
       safeFilter === 'favorites' ? safeString(folder, 120) : '',
       sort === 'frequent' ? 'frequent' : 'recent',
-      normalizeHistoryContentType(contentType)
+      normalizeHistoryContentType(contentType),
+      safeString(sourceApp, 124)
     )
   })
 
@@ -189,15 +181,14 @@ export function registerIpcHandlers(
     return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
   })
   ipcMain.handle('window:getAlwaysOnTop', (event) => {
-    return BrowserWindow.fromWebContents(event.sender)?.isAlwaysOnTop() ?? false
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return window ? getAlwaysOnTop(window) : false
   })
   ipcMain.handle('window:setAlwaysOnTop', async (event, enabled: unknown) => {
     if (typeof enabled !== 'boolean') throw new Error('Invalid always-on-top value')
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return false
-    const applied = await setAndConfirmAlwaysOnTop(window, enabled)
-    setSetting('window_always_on_top', applied ? 'true' : 'false')
-    return applied
+    return applyAlwaysOnTop(window, enabled)
   })
   ipcMain.handle('window:close', (event) => {
     // Closing the window keeps this tray application's clipboard monitor active.
@@ -366,6 +357,7 @@ export function registerIpcHandlers(
     if (result.canceled || result.filePaths.length === 0) return { status: 'cancelled' }
 
     let prepared: ReturnType<typeof readBackupFile> | null = null
+    let committed = false
     try {
       prepared = readBackupFile(result.filePaths[0], getHistoryImagesDir(), getStickersDir())
       const english = getSetting('language') === 'en'
@@ -374,8 +366,8 @@ export function registerIpcHandlers(
         title: english ? 'Import backup' : '导入备份',
         message: english ? 'Choose how to restore this backup' : '请选择恢复方式',
         detail: english
-          ? 'Merge keeps existing data and skips duplicates. Replace overwrites the current history and sticker library.'
-          : '合并导入会保留现有数据并跳过重复内容；覆盖现有数据会替换当前历史和贴图库。',
+          ? 'Merge keeps existing data and skips duplicates. Replace overwrites the current history, templates and sticker library.'
+          : '合并导入会保留现有数据并跳过重复内容；覆盖现有数据会替换当前历史、短语模板和贴图库。',
         buttons: english ? ['Merge import', 'Replace existing data', 'Cancel'] : ['合并导入', '覆盖现有数据', '取消'],
         defaultId: 0,
         cancelId: 2,
@@ -387,11 +379,17 @@ export function registerIpcHandlers(
       }
 
       const mode = choice.response === 1 ? 'replace' : 'merge'
+      pasteQueue.control('stop')
       const imported = importBackupSnapshot(prepared.snapshot, mode)
+      committed = true
       refreshApplicationLanguage()
       const restoredMonitorPaused = prepared.snapshot.settings.monitor_paused
       if (restoredMonitorPaused === 'true' || restoredMonitorPaused === 'false') {
         applyMonitorPaused(restoredMonitorPaused === 'true')
+      }
+      for (const window of BrowserWindow.getAllWindows()) {
+        window.webContents.send('history:changed')
+        void applyAlwaysOnTop(window, getSetting('window_always_on_top') === 'true', false).catch(() => {})
       }
       return {
         status: 'success',
@@ -399,11 +397,12 @@ export function registerIpcHandlers(
         source: prepared.source,
         historyCount: imported.historyCount,
         stickerCount: imported.stickerCount,
+        templateCount: imported.templateCount,
         skippedItems: prepared.skippedItems,
         skippedDuplicates: imported.skippedDuplicates,
       }
     } catch (error) {
-      if (prepared) removePreparedFiles(prepared.createdFiles)
+      if (prepared && !committed) removePreparedFiles(prepared.createdFiles)
       console.error('Failed to import clipboard backup:', error)
       return { status: 'error', error: error instanceof Error ? error.message : String(error) }
     }

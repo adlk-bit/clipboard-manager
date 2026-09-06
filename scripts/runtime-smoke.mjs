@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import initSqlJs from 'sql.js'
 import { runEfficiencySmoke } from './runtime-efficiency.mjs'
+import { runProductivitySmoke, verifyProductivityRestart } from './runtime-productivity.mjs'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 const electronExe = process.env.RUNTIME_EXECUTABLE || path.join(repoRoot, 'node_modules', 'electron', 'dist', 'electron.exe')
@@ -132,6 +133,7 @@ async function runElectron(port, assertion) {
     `--user-data-dir=${profileDir}`,
     ...(isPackagedRuntime ? [] : [repoRoot]),
     '--runtime-smoke-test',
+    ...(process.env.RUNTIME_PRODUCTIVITY_ONLY === '1' ? ['--runtime-capture-test'] : []),
   ], {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, CLIPBOARD_MANAGER_USER_DATA_DIR: profileDir },
@@ -147,6 +149,8 @@ async function runElectron(port, assertion) {
       await waitForApi(cdp)
       if (testClipboard) {
         mainDebugger = await connect(await waitForRenderer(port + 100, 'node'))
+        cdp.mainEvaluate = (expression) => mainDebugger.evaluate(expression)
+        cdp.profileDir = profileDir
         cdp.resizeWindow = async (width, height) => {
           await mainDebugger.evaluate(`process.getBuiltinModule('module').createRequire(process.cwd() + '/runtime.cjs')('electron').BrowserWindow.getAllWindows()[0].setSize(${width}, ${height})`)
         }
@@ -158,6 +162,7 @@ async function runElectron(port, assertion) {
           const electron = process.getBuiltinModule('module').createRequire(process.cwd() + '/runtime.cjs')('electron')
           const cb = electron.clipboard
           if (cb.availableFormats().some(format => !['text/plain', 'text/html', 'text/rtf', 'image/png'].includes(format))) return false
+          globalThis.__smokeFingerprint = () => JSON.stringify([cb.readText(), cb.readHTML(), cb.readRTF(), cb.readImage().toPNG().toString('base64')])
           globalThis.__smokeClipboard = { cb, data: { text: cb.readText(), html: cb.readHTML(), rtf: cb.readRTF(), image: cb.readImage() }, expected: null }
           return true
         })()`)
@@ -166,10 +171,20 @@ async function runElectron(port, assertion) {
             const result = await mainDebugger.evaluate(`(() => {
               const state = globalThis.__smokeClipboard
               const matches = state.cb.readText() === ${JSON.stringify(expected)}
-              if (matches) state.expected = ${JSON.stringify(expected)}
+              if (matches) state.expected = globalThis.__smokeFingerprint()
               return matches
             })()`)
             assert.equal(result.result?.value, true, 'OS clipboard must match the expected synthetic text')
+          }
+          cdp.verifyImageClipboard = async (imagePath) => {
+            const result = await mainDebugger.evaluate(`(() => {
+              const electron = process.getBuiltinModule('module').createRequire(process.cwd() + '/runtime.cjs')('electron')
+              const state = globalThis.__smokeClipboard
+              const same = state.cb.readImage().toBitmap().equals(electron.nativeImage.createFromPath(${JSON.stringify(imagePath)}).toBitmap())
+              if (same) state.expected = globalThis.__smokeFingerprint()
+              return same
+            })()`)
+            assert.equal(result.result?.value, true, 'OS image clipboard must equal the synthetic fixture')
           }
         } else console.log('OS clipboard copy checks skipped: preserving unsupported clipboard formats.')
       }
@@ -185,25 +200,36 @@ async function runElectron(port, assertion) {
         const restored = await mainDebugger.evaluate(`(() => {
           const state = globalThis.__smokeClipboard
           let restored = true
-          if (state && state.expected !== null && state.cb.readText() === state.expected) {
+          if (state && state.expected !== null && globalThis.__smokeFingerprint() === state.expected) {
             state.cb.write(state.data)
             restored = state.cb.readText() === state.data.text && state.cb.readHTML() === state.data.html && state.cb.readRTF() === state.data.rtf
           }
+          delete globalThis.__smokeFingerprint
           delete globalThis.__smokeClipboard
           return restored
         })()`)
         assert.equal(restored.result?.value, true, 'Test clipboard restoration failed')
       } catch { console.warn('Could not restore the test clipboard; please inspect the last copy operation.'); process.exitCode = 1 }
-      finally { mainDebugger.close() }
+      finally {
+        if (process.env.RUNTIME_GRACEFUL_QUIT === '1') {
+          await mainDebugger.evaluate("setTimeout(() => process.getBuiltinModule('module').createRequire(process.cwd() + '/runtime.cjs')('electron').app.quit(), 100); true")
+        }
+        mainDebugger.close()
+      }
     }
-    child.kill()
-    await new Promise((resolve) => child.once('exit', resolve))
+    await new Promise((resolve, reject) => {
+      if (child.exitCode !== null || child.signalCode !== null) { resolve(); return }
+      const timer = setTimeout(() => { child.kill(); reject(new Error('Runtime failed to exit')) }, 10000)
+      child.once('exit', () => { clearTimeout(timer); resolve() })
+      if (process.env.RUNTIME_GRACEFUL_QUIT !== '1') child.kill()
+    })
   }
 }
 
 try {
   await seedRuntimeProfile()
   await runElectron(9321, async (cdp) => {
+    if (process.env.RUNTIME_PRODUCTIVITY_ONLY === '1') { await runProductivitySmoke(cdp); return }
     if (process.env.RUNTIME_EFFICIENCY_ONLY === '1') {
       const setup = await cdp.evaluate(`(async () => {
         const deadline = Date.now() + 5_000
@@ -430,6 +456,7 @@ try {
   })
 
   if (process.env.RUNTIME_EFFICIENCY_ONLY !== '1') await runElectron(9322, async (cdp) => {
+    if (process.env.RUNTIME_PRODUCTIVITY_ONLY === '1') { await verifyProductivityRestart(cdp); return }
     const restored = await cdp.evaluate('window.api.getMonitorPaused()')
     assert.equal(restored.result.value, true)
     const restoredFeatureSettings = await cdp.evaluate(`(async () => ({
@@ -459,7 +486,8 @@ try {
     assert.equal(resumed.result.value, false)
   })
 
-  if (process.env.RUNTIME_EFFICIENCY_ONLY !== '1') console.log('Runtime smoke passed: sensitive previews, metadata search, persistent always-on-top, Emoji UI, phone device UI/service, settings, validation, and pause persistence work across restart.')
+  if (process.env.RUNTIME_PRODUCTIVITY_ONLY !== '1' && process.env.RUNTIME_EFFICIENCY_ONLY !== '1') console.log('Runtime smoke passed: sensitive previews, metadata search, persistent always-on-top, Emoji UI, phone device UI/service, settings, validation, and pause persistence work across restart.')
 } finally {
-  await rm(profileDir, { recursive: true, force: true })
+  if (path.dirname(profileDir) !== os.tmpdir() || !path.basename(profileDir).startsWith('clipboard-manager-runtime-')) throw new Error('Unexpected test profile path')
+  await rm(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }).catch((error) => { console.warn(`Temporary profile cleanup deferred (${error.code}).`); process.exitCode = 1 })
 }

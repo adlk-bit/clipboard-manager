@@ -15,13 +15,14 @@ export function matchesHistoryContentType(item: { type: string; content: string 
 }
 
 /** Each whitespace-separated word must match content, folder, or tags. */
-export function buildHistorySearch(search: string): { clause: string; params: string[] } {
+export function buildHistorySearch(search: string, includeProductivity = false): { clause: string; params: string[] } {
   const terms = search.slice(0, 500).trim().split(/\s+/u).filter(Boolean)
+  const fields = ['content', 'favorite_folder', 'favorite_tags', ...(includeProductivity ? ['ocr_text', 'source_app'] : [])]
   return {
-    clause: terms.map(() => " AND (content LIKE ? ESCAPE '\\' OR favorite_folder LIKE ? ESCAPE '\\' OR favorite_tags LIKE ? ESCAPE '\\')").join(''),
+    clause: terms.map(() => ` AND (${fields.map((field) => `${field} LIKE ? ESCAPE '\\'`).join(' OR ')})`).join(''),
     params: terms.flatMap((term) => {
       const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`
-      return [pattern, pattern, pattern]
+      return fields.map(() => pattern)
     }),
   }
 }

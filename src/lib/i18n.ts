@@ -6,6 +6,8 @@ export type TranslationParams = Record<string, string | number>
 export type Translate = (key: string, params?: TranslationParams) => string
 
 const zhCN: Record<string, string> = {
+  'window.pinFailed': '无法设置窗口置顶，请重试',
+  'nav.templates': '常用短语', 'page.templates': '常用短语与模板',
   'search.hint': "Ctrl+F 搜索；空格分隔多个关键词，需全部匹配；% 和 _ 按原字符查找",
   'history.selectItem': "选择记录",
   'history.merge': "合并复制",
@@ -153,14 +155,14 @@ const zhCN: Record<string, string> = {
   'backup.export': '完整备份',
   'backup.importing': '正在导入…',
   'backup.import': '恢复备份',
-  'backup.description': '.clipbackup 会包含历史文字、图片、贴图库、收藏整理信息和安全设置；也兼容导入旧版 JSON。',
+  'backup.description': '.clipbackup 会包含历史文字、图片、短语模板、OCR 索引、来源、贴图库、收藏整理信息和安全设置；也兼容导入旧版 JSON。',
   'backup.skippedFiles': '，跳过 {count} 个缺失文件',
-  'backup.exported': '已备份 {history} 条记录和 {stickers} 张贴图{skipped}',
+  'backup.exported': '已备份 {history} 条记录、{templates} 个模板和 {stickers} 张贴图{skipped}',
   'backup.exportFailed': '导出失败',
   'backup.replace': '覆盖恢复',
   'backup.merge': '合并导入',
   'backup.skippedItems': '，跳过 {count} 项',
-  'backup.imported': '{mode}完成：{history} 条记录、{stickers} 张贴图{skipped}',
+  'backup.imported': '{mode}完成：{history} 条记录、{templates} 个模板、{stickers} 张贴图{skipped}',
   'backup.importFailed': '导入失败：{error}',
   'backup.invalid': '导入失败，请检查文件格式',
   'confirm.deleteTitle': '确认删除这条记录？',
@@ -235,6 +237,8 @@ const zhCN: Record<string, string> = {
 }
 
 const en: Record<string, string> = {
+  'window.pinFailed': 'Could not set always-on-top. Try again.',
+  'nav.templates': 'Phrases', 'page.templates': 'Phrases & templates',
   'search.hint': "Ctrl+F to search; separate keywords with spaces to match all; % and _ are literal",
   'history.selectItem': "Select record",
   'history.merge': "Merge & copy",
@@ -382,14 +386,14 @@ const en: Record<string, string> = {
   'backup.export': 'Full backup',
   'backup.importing': 'Importing…',
   'backup.import': 'Restore backup',
-  'backup.description': '.clipbackup includes text, images, stickers, favorite organization, and safety settings. Legacy JSON is also supported.',
+  'backup.description': '.clipbackup includes text, images, templates, OCR indexes, sources, stickers, favorite organization, and safety settings. Legacy JSON is also supported.',
   'backup.skippedFiles': '; skipped {count} missing file(s)',
-  'backup.exported': 'Backed up {history} history item(s) and {stickers} sticker(s){skipped}',
+  'backup.exported': 'Backed up {history} history item(s), {templates} template(s) and {stickers} sticker(s){skipped}',
   'backup.exportFailed': 'Export failed',
   'backup.replace': 'Restore',
   'backup.merge': 'Merge import',
   'backup.skippedItems': '; skipped {count} item(s)',
-  'backup.imported': '{mode} complete: {history} history item(s), {stickers} sticker(s){skipped}',
+  'backup.imported': '{mode} complete: {history} history item(s), {templates} template(s), {stickers} sticker(s){skipped}',
   'backup.importFailed': 'Import failed: {error}',
   'backup.invalid': 'Import failed. Check the file format.',
   'confirm.deleteTitle': 'Delete this history item?',

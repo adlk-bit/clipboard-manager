@@ -43,20 +43,20 @@ node scripts/runtime-smoke.mjs
 
 `RUNTIME_EFFICIENCY_ONLY=1` 只运行新增效率检查；不设置时仍运行原有完整流程。截图可通过 `RUNTIME_EFFICIENCY_SCREENSHOT_DIR` 指向已存在的输出目录。
 
-## 建议的下一批功能（尚未实现）
+## 下一批功能（2026-09-06，纳入 v1.2.1）
 
-| 优先级 | 功能 | 实际收益 | 建议实现边界 |
+| 优先级 | 功能 | 实际收益 | 实现范围 |
 |---|---|---|---|
-| P1 | 常用短语与变量模板 | 回复、邮件、教学通知不再反复改姓名、日期、金额 | 基于收藏新增模板标题和变量输入；预览后复制，不后台监听全部键盘 |
+| P1 | 常用短语与变量模板 | 回复、邮件、教学通知不再反复改姓名、日期、金额 | 独立短语库，可从历史保存为模板；变量预览后复制，不后台监听全部键盘 |
 | P1 | 顺序粘贴队列 | 连续填姓名、电话、地址或多列表格，减少来回切窗 | 显示队列进度，跳过/撤回一步；自动粘贴前验证 Windows 焦点切换与目标窗口 |
-| P1 | 采集性能与窗口置顶专项修复 | 长期驻留时减少重复处理大图片，并消除窗口置顶的不稳定 | 先记录大图驻留时的 CPU/唤醒频率与置顶 OS 状态，再考虑 Windows 剪贴板变更通知；有轮询回退 |
-| P2 | 本地 OCR 与截图文字搜索 | 图片、题目截图和表格内容可直接检索/复制 | 用户触发识别，缓存结果，可删除索引；先评估语言包大小和实际准确率 |
+| P1 | 采集性能与窗口置顶专项修复 | 长期驻留时减少重复处理大图片，并消除窗口置顶的不稳定 | 已接入 Windows 剪贴板通知与序号回退；原生状态确认置顶；大图驻留与重启测试通过 |
+| P2 | 本地 OCR 与截图文字搜索 | 图片、题目截图和表格内容可直接检索/复制 | 使用已安装的 Windows OCR 语言；用户触发识别、缓存和清除索引，不随包下载模型 |
 | P2 | 来源应用筛选、采集排除规则 | 快速找浏览器/编辑器内容，减少无用历史 | 来源元数据最小化；排除应用与暂停状态清晰可见 |
 
-先完善短语模板和顺序粘贴队列，更直接覆盖重复输入；OCR 会引入语言包、识别耗时与安装体积，需要单独验证后再接入。
+上述五项已完成，详细使用方式、备份迁移、限制与验证记录见 [下一批效率功能说明](productivity-next-batch.md)。上方“验证”记录属于已发布的 v1.2.0；本批已通过原有完整运行检查，修复了该记录中的置顶问题。
 
 ## English summary
 
 Implemented in v1.2.0: type filters, multi-keyword literal search, request-race protection, keyboard copy, accessible batch selection, text merging, reversible text tools, lossless JSON whitespace formatting, content-safe copy notifications, and reduced card/statistics refreshes. No runtime dependency was added. Android's version is synchronized without phone feature changes.
 
-Validation: 32 unit tests, both TypeScript projects, production build, focused Electron UI/OS clipboard checks, and screenshot inspection passed. The existing full runtime suite still intermittently fails Windows always-on-top; it is not reported as passing. Suggested next work: variable-based text templates, a sequential paste queue, Windows capture/window reliability, optional local OCR, and source-app filters.
+Validation: 32 unit tests, both TypeScript projects, production build, focused Electron UI/OS clipboard checks, and screenshot inspection passed. The existing full runtime suite still intermittently fails Windows always-on-top; it is not reported as passing. Those five follow-up items are now included in v1.2.1; its full runtime suite, including native topmost persistence, passes. See [the new implementation notes](productivity-next-batch.md). The validation paragraph above records the historical v1.2.0 release status.

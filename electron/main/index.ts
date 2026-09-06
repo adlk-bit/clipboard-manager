@@ -1,3 +1,7 @@
+import { windowsNative } from './windows-native'
+import { applyAlwaysOnTop } from './window-state'
+import { registerProductivityIpc } from './productivity-ipc'
+import { QUEUE_HOTKEY } from '../../shared/productivity'
 import { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, protocol, clipboard, Notification, type NativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
@@ -9,6 +13,7 @@ import { isManagedAssetPath } from './asset-paths'
 import { MobileSyncService, setMobileSyncService } from './mobile-sync'
 import { synchronizeAutoLaunch } from './auto-launch'
 
+let isQuitting = false
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let registeredHotkey: string | null = null
@@ -110,6 +115,7 @@ function createWindow() {
   })
 
   mainWindow.on('close', (e) => {
+    if (isQuitting) return
     if (mainWindow && !mainWindow.isDestroyed()) {
       e.preventDefault()
       mainWindow.hide()
@@ -117,6 +123,7 @@ function createWindow() {
   })
 
   mainWindow.on('show', () => {
+    if (mainWindow) void applyAlwaysOnTop(mainWindow, getSetting('window_always_on_top') === 'true', false).catch(() => {})
     mainWindow?.webContents.send('history:changed')
   })
 
@@ -155,7 +162,7 @@ function refreshTrayMenu() {
     {
       label: english ? 'Quit' : '退出',
       click: () => {
-        app.exit(0)
+        app.quit()
       }
     }
   ])
@@ -257,7 +264,7 @@ export function hideWindow() {
 export function updateGlobalShortcut(rawHotkey: string): { success: boolean; hotkey?: string; error?: string } {
   const hotkey = rawHotkey.trim()
   const english = getSetting('language') === 'en'
-  if (!isSupportedHotkey(hotkey)) {
+  if (!isSupportedHotkey(hotkey) || hotkey.split('+').sort().join('+') === QUEUE_HOTKEY.split('+').sort().join('+')) {
     return { success: false, error: english ? 'Invalid shortcut. Combine a modifier with another key.' : '快捷键格式无效，请至少组合一个修饰键和一个按键。' }
   }
 
@@ -306,6 +313,7 @@ app.whenReady().then(async () => {
 
   // Initialize database
   await initDatabaseAsync()
+  await windowsNative.start()
 
   // Runtime smoke tests must not modify the user's real Windows startup list.
   // Normal packaged launches also repair the missing login item from releases
@@ -356,9 +364,13 @@ app.whenReady().then(async () => {
   registerIpcHandlers(updateGlobalShortcut, hideWindow, applyMonitorPaused, refreshTrayMenu)
 
   // Create UI
+  registerProductivityIpc()
   createWindow()
   createTray()
 
+  if (isRuntimeTest && process.argv.includes('--runtime-capture-test')) {
+    startMonitor(500, () => mainWindow?.webContents.send('history:changed'))
+  }
   // Start services
   if (!isRuntimeTest) {
     startMonitor(500, () => {
@@ -377,7 +389,10 @@ app.on('window-all-closed', () => {
   // Don't quit, keep running in tray
 })
 
+app.on('before-quit', () => { isQuitting = true })
+
 app.on('will-quit', () => {
+  windowsNative.stop()
   stopMonitor()
   stopScheduler()
   void mobileSyncService?.stop()

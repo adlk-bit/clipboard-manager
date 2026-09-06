@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import SourceFilter from './SourceFilter'
+import { useWords, errorText } from './ProductivityShared'
 import { useStore } from '../stores/useStore'
 import type { HistoryItem } from '../types'
 import HistoryCard from './HistoryCard'
@@ -8,11 +11,17 @@ import type { HistoryContentType } from '../../shared/history-query'
 interface HistoryListProps {
   onCopy: (msg: string) => void
   onEdit: (item: HistoryItem) => void
+  onTemplate: (item: HistoryItem) => void
+  onOcr: (item: HistoryItem) => void
   onMerge: (items: HistoryItem[]) => void
 }
 
-export default function HistoryList({ onCopy, onEdit, onMerge }: HistoryListProps) {
-  const { t } = useI18n()
+export default function HistoryList({ onCopy, onEdit, onMerge, onTemplate, onOcr }: HistoryListProps) {
+  const { t, language } = useI18n()
+  const q = useWords()
+  const [queueError, setQueueError] = useState('')
+  const [queueBusy, setQueueBusy] = useState(false)
+  const [reverseQueue, setReverseQueue] = useState(false)
   const historyItems = useStore((s) => s.historyItems)
   const historyLoading = useStore((s) => s.historyLoading)
   const historyError = useStore((s) => s.historyError)
@@ -64,7 +73,14 @@ export default function HistoryList({ onCopy, onEdit, onMerge }: HistoryListProp
       {/* Batch action bar */}
       {selectionMode && (
         <div className="no-drag flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#bedcff] bg-[#edf6ff] px-3 py-2 dark:border-[#0a84ff]/25 dark:bg-[#0a84ff]/10">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" disabled={queueBusy || historyLoading || !selectedItems.length || selectedItems.length > 100 || selectedItems.some((item) => item.type !== 'text')} className="rounded bg-primary-500 px-2 py-1 text-xs text-white disabled:opacity-40" onClick={async () => {
+              setQueueBusy(true); setQueueError('')
+              try { await window.api.startQueue((reverseQueue ? [...selectedItems].reverse() : selectedItems).map((item) => item.id)); setSelectionMode(false) }
+              catch (error) { setQueueError(errorText(error, language === 'en')) } finally { setQueueBusy(false) }
+            }}>{q('顺序粘贴', 'Paste queue')}</button>
+            <label className="text-[10px] dark:text-gray-300"><input type="checkbox" checked={reverseQueue} onChange={(event) => setReverseQueue(event.target.checked)} /> {q('倒序', 'Reverse')}</label>
+            <span className="w-full text-[10px] text-gray-500 dark:text-gray-400">{q('按列表顺序，最多 100 条文字', 'List order, up to 100 text items')}</span>
             <button type="button" disabled={!canMerge || historyLoading} title={t('history.mergeHint')} onClick={() => onMerge(selectedItems)} className="rounded bg-primary-500 px-2 py-1 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40">{t('history.merge')}</button>
             <button
               onClick={handleSelectAll}
@@ -145,6 +161,8 @@ export default function HistoryList({ onCopy, onEdit, onMerge }: HistoryListProp
         </div>
       )}
 
+      {!selectionMode && <SourceFilter />}
+      {queueError && <p role="alert" className="p-2 text-xs text-red-500">{queueError}</p>}
       {/* Card list */}
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5" aria-busy={historyLoading}>
         {historyError && <button type="button" onClick={() => void loadHistory()} className="w-full rounded p-2 text-xs text-red-500">{t('history.retry')}</button>}
@@ -177,13 +195,13 @@ export default function HistoryList({ onCopy, onEdit, onMerge }: HistoryListProp
           <div className="pt-1 text-[10px] font-medium text-primary-500 dark:text-primary-400">{t('history.pinnedFavorites')}</div>
         )}
         {pinnedFavorites.map((item) => (
-          <HistoryCard key={item.id} item={item} onCopy={onCopy} onEdit={onEdit} />
+          <HistoryCard key={item.id} item={item} onCopy={onCopy} onEdit={onEdit} onTemplate={onTemplate} onOcr={onOcr} />
         ))}
         {pinnedFavorites.length > 0 && regularItems.length > 0 && (
           <div className="pt-2 text-[10px] font-medium text-gray-400 dark:text-gray-500">{t('history.allFavorites')}</div>
         )}
         {regularItems.map((item) => (
-          <HistoryCard key={item.id} item={item} onCopy={onCopy} onEdit={onEdit} />
+          <HistoryCard key={item.id} item={item} onCopy={onCopy} onEdit={onEdit} onTemplate={onTemplate} onOcr={onOcr} />
         ))}
 
         {!selectionMode && historyItems.length > 0 && (

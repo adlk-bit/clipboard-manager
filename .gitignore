@@ -1,5 +1,6 @@
 node_modules/
 out/
+native/bin/
 dist/
 *.log
 .DS_Store

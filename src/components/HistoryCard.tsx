@@ -9,12 +9,14 @@ import { maskSensitivePreview } from '../lib/sensitive-content'
 interface HistoryCardProps {
   item: HistoryItem
   onCopy: (msg: string) => void
+  onTemplate: (item: HistoryItem) => void
+  onOcr: (item: HistoryItem) => void
   onEdit: (item: HistoryItem) => void
 }
 
 const actionButtonClass = 'flex size-6 items-center justify-center rounded text-[#8a8a90] transition-colors hover:bg-black/[0.05] hover:text-[#3a3a3c] focus-visible:opacity-100 dark:text-[#96969c] dark:hover:bg-white/[0.08] dark:hover:text-white'
 
-const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryCardProps) {
+const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate, onOcr }: HistoryCardProps) {
   const { language, t } = useI18n()
   const [copied, setCopied] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState(false)
@@ -285,6 +287,8 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit }: HistoryC
                 {t('card.pinned')}
               </span>
             )}
+            {!selectionMode && <button type="button" className="shrink-0 rounded px-1 py-0.5 text-[10px] text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20" onClick={(event) => { event.stopPropagation(); if (item.type === 'image') onOcr(item); else onTemplate(item) }}>{item.type === 'image' ? 'OCR' : language === 'en' ? 'Template' : '存为模板'}</button>}
+            {item.source_app && <span title={item.source_app} className="max-w-[75px] truncate text-[9px] text-gray-400">{item.source_app}</span>}
             <span className="shrink-0 text-[10px] tracking-[0.01em] text-[#8e8e93] dark:text-[#98989d]">{timeStr}</span>
           </div>
 

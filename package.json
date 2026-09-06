@@ -1,9 +1,14 @@
 {
   "name": "clipboard-manager",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Windows 剪贴板历史管理工具",
   "main": "./out/main/index.js",
   "scripts": {
+    "build:native": "node scripts/build-native.mjs",
+    "predev": "npm run build:native",
+    "prebuild": "npm run build:native",
+    "predist": "npm run build:native",
+    "prepack": "npm run build:native",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "test": "tsx --test tests/**/*.test.ts",

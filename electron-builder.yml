@@ -29,5 +29,9 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
 extraResources:
+  - from: native/bin/ClipboardBridge.exe
+    to: native/ClipboardBridge.exe
+  - from: native/ocr.ps1
+    to: native/ocr.ps1
   - from: node_modules/sql.js/dist/sql-wasm.wasm
     to: sql-wasm.wasm

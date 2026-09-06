@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
 import { useI18n } from '../lib/i18n'
 
 export default function WindowTitleBar() {
   const { t } = useI18n()
   const [isMaximized, setIsMaximized] = useState(false)
+  const [topmostBusy, setTopmostBusy] = useState(true)
+  const [topmostError, setTopmostError] = useState(false)
+  const topmostRevision = useRef(0)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
 
   useEffect(() => {
@@ -13,14 +16,17 @@ export default function WindowTitleBar() {
     window.api.isWindowMaximized().then((maximized) => {
       if (mounted) setIsMaximized(maximized)
     })
+    const revision = topmostRevision.current
     window.api.getWindowAlwaysOnTop().then((enabled) => {
-      if (mounted) setAlwaysOnTop(enabled)
-    })
+      if (mounted && revision === topmostRevision.current) setAlwaysOnTop(enabled)
+    }).catch(() => { if (mounted) setTopmostError(true) }).finally(() => { if (mounted) setTopmostBusy(false) })
+    const unsubscribeTop = window.api.onWindowTopmostChanged((enabled) => { topmostRevision.current++; setAlwaysOnTop(enabled) })
 
     const unsubscribe = window.api.onWindowMaximizedChanged(setIsMaximized)
     return () => {
       mounted = false
       unsubscribe()
+      unsubscribeTop()
     }
   }, [])
 
@@ -29,7 +35,11 @@ export default function WindowTitleBar() {
   }
 
   const toggleAlwaysOnTop = async () => {
-    setAlwaysOnTop(await window.api.setWindowAlwaysOnTop(!alwaysOnTop))
+    if (topmostBusy) return
+    topmostRevision.current++; setTopmostBusy(true); setTopmostError(false)
+    try { setAlwaysOnTop(await window.api.setWindowAlwaysOnTop(!alwaysOnTop)) }
+    catch { setTopmostError(true) }
+    finally { setTopmostBusy(false) }
   }
 
   return (
@@ -52,7 +62,8 @@ export default function WindowTitleBar() {
           className={`window-control-button ${alwaysOnTop ? 'window-control-button-active' : ''}`}
           aria-label={alwaysOnTop ? t('window.unpin') : t('window.pin')}
           aria-pressed={alwaysOnTop}
-          title={alwaysOnTop ? t('window.unpin') : t('window.pin')}
+          title={topmostError ? t('window.pinFailed') : alwaysOnTop ? t('window.unpin') : t('window.pin')}
+          disabled={topmostBusy}
           onClick={toggleAlwaysOnTop}
         >
           <Icon name="pin" size={12} />

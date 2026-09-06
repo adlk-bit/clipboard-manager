@@ -1,3 +1,4 @@
+import { validateTemplate, parseExcludedApps, type TextTemplate } from '../../shared/productivity'
 import path from 'path'
 import { app } from 'electron'
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js'
@@ -201,6 +202,11 @@ export async function initDatabaseAsync(): Promise<SqlJsDatabase> {
   if (!getSetting('sensitive_preview')) setSetting('sensitive_preview', 'true')
   if (!getSetting('window_always_on_top')) setSetting('window_always_on_top', 'false')
 
+  for (const column of ['source_app', 'ocr_text', 'ocr_language']) {
+    if (!historyColumns.has(column)) db.run(`ALTER TABLE clipboard_history ADD COLUMN ${column} TEXT NOT NULL DEFAULT ''`)
+  }
+  db.run('CREATE TABLE IF NOT EXISTS text_templates (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)')
+  if (!getSetting('excluded_apps')) setSetting('excluded_apps', '[]')
   cleanupStorageIntegrity()
   saveDb()
   return db
@@ -241,6 +247,9 @@ export interface HistoryItem {
   use_count: number
   last_used_at: string
   content_hash: string
+  source_app: string
+  ocr_text: string
+  ocr_language: string
 }
 
 export interface HistoryInsertResult {
@@ -252,7 +261,8 @@ export function insertHistory(
   type: 'text' | 'image',
   content: string | null,
   imagePath: string | null,
-  contentHash: string = ''
+  contentHash: string = '',
+  sourceApp: string = ''
 ): HistoryInsertResult {
   if (!db) return { created: false, id: null }
 
@@ -265,15 +275,15 @@ export function insertHistory(
   if (duplicateStmt.step()) {
     const duplicateId = Number(duplicateStmt.getAsObject().id)
     duplicateStmt.free()
-    db.run('UPDATE clipboard_history SET use_count = use_count + 1, last_used_at = CURRENT_TIMESTAMP WHERE id = ?', [duplicateId])
+    db.run('UPDATE clipboard_history SET use_count = use_count + 1, last_used_at = CURRENT_TIMESTAMP, source_app = ? WHERE id = ?', [sourceApp, duplicateId])
     saveDb()
     return { created: false, id: duplicateId }
   }
   duplicateStmt.free()
 
   db.run(
-    'INSERT INTO clipboard_history (type, content, image_path, content_hash) VALUES (?, ?, ?, ?)',
-    [type, content, imagePath, contentHash]
+    'INSERT INTO clipboard_history (type, content, image_path, content_hash, source_app) VALUES (?, ?, ?, ?, ?)',
+    [type, content, imagePath, contentHash, sourceApp]
   )
   enforceHistoryLimit(parseInt(getSetting('max_history_items') || '500', 10))
   saveDb()
@@ -355,7 +365,8 @@ export function getHistoryList(
   filter: 'all' | 'favorites' = 'all',
   folder: string = '',
   sort: 'recent' | 'frequent' = 'recent',
-  contentType: HistoryContentType = 'all'
+  contentType: HistoryContentType = 'all',
+  sourceApp: string = ''
 ): HistoryItem[] {
   if (!db) return []
   try {
@@ -370,7 +381,8 @@ export function getHistoryList(
       }
     }
 
-    const searchQuery = buildHistorySearch(search)
+    if (sourceApp) { query += ' AND source_app = ?'; params.push(sourceApp === '__unknown__' ? '' : sourceApp) }
+    const searchQuery = buildHistorySearch(search, true)
     query += searchQuery.clause
     params.push(...searchQuery.params)
 
@@ -566,7 +578,7 @@ export function deleteSticker(id: number): void {
   saveDb()
 }
 
-const PORTABLE_SETTING_KEYS = ['retention_days', 'dark_mode', 'language', 'max_history_items', 'max_image_size_mb', 'monitor_paused', 'sensitive_preview', 'window_always_on_top'] as const
+const PORTABLE_SETTING_KEYS = ['retention_days', 'dark_mode', 'language', 'max_history_items', 'max_image_size_mb', 'monitor_paused', 'sensitive_preview', 'window_always_on_top', 'excluded_apps'] as const
 
 export function getBackupSnapshot(): BackupSnapshot {
   const historyStmt = db.prepare('SELECT * FROM clipboard_history ORDER BY id ASC')
@@ -580,12 +592,13 @@ export function getBackupSnapshot(): BackupSnapshot {
     if (value !== null) settings[key] = value
   }
 
-  return { history, stickers: getStickerList(), settings }
+  return { history, stickers: getStickerList(), settings, templates: getTemplates() }
 }
 
 export interface BackupImportResult {
   historyCount: number
   stickerCount: number
+  templateCount: number
   skippedDuplicates: number
 }
 
@@ -611,6 +624,7 @@ function removeFiles(filePaths: Iterable<string>): void {
 }
 
 function validatedPortableSetting(key: string, value: string): string | null {
+  if (key === 'excluded_apps') { try { return JSON.stringify(parseExcludedApps(value)) } catch { return null } }
   if (key === 'dark_mode') return value === 'true' ? 'true' : value === 'false' ? 'false' : null
   if (key === 'language') return value === 'en' ? 'en' : value === 'zh-CN' ? 'zh-CN' : null
   if (key === 'retention_days') return ['0', '1', '3', '5'].includes(value) ? value : null
@@ -635,6 +649,7 @@ export function importBackupSnapshot(snapshot: BackupSnapshot, mode: 'merge' | '
     mode === 'merge' ? getStickerList().map((item) => fileHash(item.image_path)).filter(Boolean) : []
   )
   const unusedImportedFiles = new Set<string>()
+  let templateCount = 0
   let historyCount = 0
   let stickerCount = 0
   let skippedDuplicates = 0
@@ -644,6 +659,7 @@ export function importBackupSnapshot(snapshot: BackupSnapshot, mode: 'merge' | '
     if (mode === 'replace') {
       db.run('DELETE FROM clipboard_history')
       db.run('DELETE FROM stickers')
+      db.run('DELETE FROM text_templates')
     }
 
     for (const item of snapshot.history) {
@@ -670,6 +686,7 @@ export function importBackupSnapshot(snapshot: BackupSnapshot, mode: 'merge' | '
           item.is_pinned, item.is_favorite, item.favorite_folder, item.favorite_tags, item.use_count,
           item.last_used_at, item.last_used_at, item.created_at, item.created_at, duplicateId,
         ])
+        db.run("UPDATE clipboard_history SET source_app = CASE WHEN source_app = '' THEN ? ELSE source_app END, ocr_language = CASE WHEN ocr_language = '' THEN ? ELSE ocr_language END, ocr_text = CASE WHEN ocr_language = '' THEN ? ELSE ocr_text END WHERE id = ?", [item.source_app || '', item.ocr_language || '', item.ocr_text || '', duplicateId])
         if (item.image_path) unusedImportedFiles.add(item.image_path)
         skippedDuplicates++
         continue
@@ -678,11 +695,11 @@ export function importBackupSnapshot(snapshot: BackupSnapshot, mode: 'merge' | '
       db.run(`
         INSERT INTO clipboard_history (
           type, content, image_path, is_pinned, is_favorite, created_at,
-          favorite_folder, favorite_tags, favorite_sort_order, use_count, last_used_at, content_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          favorite_folder, favorite_tags, favorite_sort_order, use_count, last_used_at, content_hash, source_app, ocr_text, ocr_language
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         item.type, item.content, item.image_path, item.is_pinned, item.is_favorite, item.created_at,
-        item.favorite_folder, item.favorite_tags, item.favorite_sort_order, item.use_count, item.last_used_at, item.content_hash,
+        item.favorite_folder, item.favorite_tags, item.favorite_sort_order, item.use_count, item.last_used_at, item.content_hash, item.source_app || '', item.ocr_text || '', item.ocr_language || '',
       ])
       historyCount++
     }
@@ -699,6 +716,15 @@ export function importBackupSnapshot(snapshot: BackupSnapshot, mode: 'merge' | '
       stickerCount++
     }
 
+    for (const template of snapshot.templates || []) {
+      const safe = validateTemplate(template.title, template.body)
+      const stmt = db.prepare('SELECT id FROM text_templates WHERE title = ? AND body = ?')
+      stmt.bind([safe.title, safe.body]); const exists = stmt.step(); stmt.free()
+      if (exists) { skippedDuplicates++; continue }
+      db.run('INSERT INTO text_templates (title, body, created_at, updated_at) VALUES (?, ?, ?, ?)', [safe.title, safe.body, template.created_at, template.updated_at])
+      templateCount++
+    }
+    if (Number(db.exec('SELECT COUNT(*) FROM text_templates')[0].values[0][0]) > 1000) throw new Error('template-limit')
     for (const [key, rawValue] of Object.entries(snapshot.settings)) {
       const value = validatedPortableSetting(key, rawValue)
       if (value !== null) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value])
@@ -714,7 +740,7 @@ export function importBackupSnapshot(snapshot: BackupSnapshot, mode: 'merge' | '
   if (mode === 'replace') removeFiles(oldFiles)
   enforceHistoryLimit(parseInt(getSetting('max_history_items') || '500', 10))
   saveDb()
-  return { historyCount, stickerCount, skippedDuplicates }
+  return { historyCount, stickerCount, templateCount, skippedDuplicates }
 }
 
 export interface StorageCleanupResult {
@@ -811,4 +837,33 @@ export function closeDatabase(): void {
     saveDbSync()
     db.close()
   }
+}
+
+export function getTemplates(): TextTemplate[] {
+  const stmt = db.prepare('SELECT * FROM text_templates ORDER BY updated_at DESC, id DESC')
+  const rows: TextTemplate[] = []
+  while (stmt.step()) rows.push(stmt.getAsObject() as unknown as TextTemplate)
+  stmt.free(); return rows
+}
+export function saveTemplate(id: number | null, title: unknown, body: unknown): TextTemplate {
+  const safe = validateTemplate(title, body)
+  if (id !== null) {
+    db.run('UPDATE text_templates SET title = ?, body = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [safe.title, safe.body, id])
+    if (!db.getRowsModified()) throw new Error('template-not-found')
+  } else {
+    if (Number(db.exec('SELECT COUNT(*) FROM text_templates')[0].values[0][0]) >= 1000) throw new Error('template-limit')
+    db.run('INSERT INTO text_templates (title, body) VALUES (?, ?)', [safe.title, safe.body])
+    id = Number(db.exec('SELECT last_insert_rowid()')[0].values[0][0])
+  }
+  saveDb(); return getTemplates().find((item) => item.id === id)!
+}
+export function deleteTemplate(id: number): void { db.run('DELETE FROM text_templates WHERE id = ?', [id]); saveDb() }
+export function getSourceApps(): string[] {
+  return (db.exec("SELECT DISTINCT source_app FROM clipboard_history WHERE source_app <> '' ORDER BY source_app")[0]?.values || []).map((row) => String(row[0]))
+}
+export function updateOcr(id: number, text: string, language: string): void {
+  db.run("UPDATE clipboard_history SET ocr_text = ?, ocr_language = ? WHERE id = ? AND type = 'image'", [text, language, id]); saveDb()
+}
+export function clearOcr(id: number | null): void {
+  db.run("UPDATE clipboard_history SET ocr_text = '', ocr_language = ''" + (id === null ? '' : ' WHERE id = ?'), id === null ? [] : [id]); saveDb()
 }
