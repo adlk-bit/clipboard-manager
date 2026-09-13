@@ -1,4 +1,5 @@
 import { windowsNative } from './windows-native'
+import { registerQuickPaste, openQuickPaste, cancelQuickPaste, quickPasteBusy } from './quick-paste'
 import { applyAlwaysOnTop } from './window-state'
 import { registerProductivityIpc } from './productivity-ipc'
 import { QUEUE_HOTKEY } from '../../shared/productivity'
@@ -212,8 +213,10 @@ function createFallbackTrayIcon(): NativeImage {
   return nativeImage.createFromBuffer(buffer, { width: size, height: size })
 }
 
-function showWindow() {
+function showWindow(preserveQuickPaste = false) {
   if (!mainWindow || mainWindow.isDestroyed()) return
+  if (quickPasteBusy()) return
+  if (!preserveQuickPaste) cancelQuickPaste(mainWindow)
 
   // A minimized BrowserWindow is reported as not visible. Restore it before
   // reading or changing its bounds; moving a minimized/maximized frameless
@@ -258,7 +261,12 @@ function isSupportedHotkey(hotkey: string): boolean {
 }
 
 export function hideWindow() {
+  cancelQuickPaste(mainWindow)
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
+}
+
+function showQuickPaste() {
+  if (mainWindow && !mainWindow.isDestroyed()) void openQuickPaste(mainWindow, () => showWindow(true))
 }
 
 export function updateGlobalShortcut(rawHotkey: string): { success: boolean; hotkey?: string; error?: string } {
@@ -272,9 +280,9 @@ export function updateGlobalShortcut(rawHotkey: string): { success: boolean; hot
   if (previousHotkey) globalShortcut.unregister(previousHotkey)
 
   try {
-    const registered = globalShortcut.register(hotkey, showWindow)
+    const registered = globalShortcut.register(hotkey, showQuickPaste)
     if (!registered) {
-      if (previousHotkey) globalShortcut.register(previousHotkey, showWindow)
+      if (previousHotkey) globalShortcut.register(previousHotkey, showQuickPaste)
       return { success: false, error: english ? 'This shortcut is already used by another app.' : '该快捷键已被其他应用占用。' }
     }
 
@@ -284,7 +292,7 @@ export function updateGlobalShortcut(rawHotkey: string): { success: boolean; hot
     console.error('Failed to register global shortcut:', e)
     if (previousHotkey) {
       try {
-        globalShortcut.register(previousHotkey, showWindow)
+        globalShortcut.register(previousHotkey, showQuickPaste)
       } catch (restoreError) {
         console.error('Failed to restore previous global shortcut:', restoreError)
       }
@@ -366,6 +374,7 @@ app.whenReady().then(async () => {
   // Create UI
   registerProductivityIpc()
   createWindow()
+  registerQuickPaste(mainWindow!)
   createTray()
 
   if (isRuntimeTest && process.argv.includes('--runtime-capture-test')) {

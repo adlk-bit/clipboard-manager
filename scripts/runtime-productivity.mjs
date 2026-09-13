@@ -13,7 +13,7 @@ async function evaluate(cdp, expression) {
   return result.result?.value
 }
 let fixtureBuilt = false
-async function fixture() {
+export async function fixture() {
   await mkdir(output, { recursive: true })
   const exe = path.join(output, 'NativeFixture.exe')
   if (!fixtureBuilt) {

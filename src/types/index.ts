@@ -98,6 +98,10 @@ export type BackupImportResult =
 export type PageView = 'all' | 'favorites' | 'emoji' | 'stickers' | 'devices' | 'settings' | 'templates'
 
 export interface ElectronApi {
+  getQuickPasteStatus: () => Promise<import('../../shared/quick-paste').QuickPasteStatus>
+  cancelQuickPaste: () => Promise<void>
+  quickPaste: (id: number, session: number) => Promise<import('../../shared/quick-paste').QuickPasteResult>
+  onQuickPasteChanged: (callback: (status: import('../../shared/quick-paste').QuickPasteStatus) => void) => () => void
   getTemplates: () => Promise<TextTemplate[]>
   saveTemplate: (id: number | null, title: string, body: string) => Promise<TextTemplate>
   deleteTemplate: (id: number) => Promise<void>

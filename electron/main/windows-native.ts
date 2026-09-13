@@ -64,6 +64,32 @@ class WindowsNative {
   }
 }
 export const windowsNative = new WindowsNative()
+/** A child started while the panel is foreground may restore the chosen target
+ * under Windows' normal foreground rules. No input-thread attachment or keys
+ * used to bypass the system's focus restrictions. */
+export function restoreAndPaste(args: Record<string, unknown>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(nativeResource('ClipboardBridge.exe'), [String(process.pid), '--quick-paste'], { windowsHide: true, stdio: 'pipe' })
+    let settled = false
+    const finish = (error?: Error) => {
+      if (settled) return
+      settled = true; clearTimeout(timer); child.kill()
+      if (error) reject(error); else resolve()
+    }
+    const timer = setTimeout(() => finish(new Error('input-uncertain')), 5000)
+    child.on('error', () => finish(new Error('native-unavailable')))
+    child.on('exit', () => finish(new Error('input-uncertain')))
+    child.stderr.resume()
+    createInterface({ input: child.stdout }).on('line', (line) => {
+      try {
+        const value = JSON.parse(line)
+        finish(value.result === true ? undefined : new Error(value.error || 'input-uncertain'))
+      } catch { finish(new Error('input-uncertain')) }
+    })
+    child.stdin.on('error', () => finish(new Error('native-unavailable')))
+    child.stdin.end(JSON.stringify({ action: 'restoreAndPaste', ...args }) + '\n')
+  })
+}
 export function windowHandle(window: BrowserWindow): string {
   const handle = window.getNativeWindowHandle()
   return handle.length === 8 ? handle.readBigUInt64LE().toString() : handle.readUInt32LE().toString()

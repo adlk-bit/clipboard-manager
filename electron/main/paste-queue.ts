@@ -3,6 +3,7 @@ import { getHistoryById, recordHistoryUse } from './database'
 import { markClipboardHistoryItemCopied } from './clipboard-monitor'
 import { windowsNative, type Foreground, type ClipboardState } from './windows-native'
 import { QUEUE_HOTKEY, type QueueStatus } from '../../shared/productivity'
+import { acquirePaste, releasePaste } from './paste-operation'
 
 class PasteQueue {
   private items: { id: number; text: string }[] = []
@@ -40,6 +41,7 @@ class PasteQueue {
   }
   async paste(): Promise<void> {
     if (this.busy || this.paused || this.cursor >= this.items.length) return
+    if (!acquirePaste()) return
     this.busy = true; this.error = ''; this.changed()
     try {
       const current = await windowsNative.request<Foreground>('foreground')
@@ -57,7 +59,7 @@ class PasteQueue {
     } catch (error) {
       this.error = error instanceof Error ? error.message : 'queue-failed'
       this.paused = true
-    } finally { this.busy = false; this.changed() }
+    } finally { releasePaste(); this.busy = false; this.changed() }
   }
 }
 export const pasteQueue = new PasteQueue()

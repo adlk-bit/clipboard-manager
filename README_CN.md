@@ -54,8 +54,8 @@
 
 前往 [Releases](https://github.com/adlk-bit/clipboard-manager/releases) 下载：
 
-- Windows：[ClipboardManager-Setup-1.2.1.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.1/ClipboardManager-Setup-1.2.1.exe)，双击运行安装。
-- Android：[ClipboardManager-Android-1.2.1.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.1/ClipboardManager-Android-1.2.1.apk)，允许浏览器或文件管理器“安装未知应用”后安装。
+- Windows：[ClipboardManager-Setup-1.2.2.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Setup-1.2.2.exe)，双击运行安装。
+- Android：[ClipboardManager-Android-1.2.2.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Android-1.2.2.apk)，允许浏览器或文件管理器“安装未知应用”后安装。
 
 ### 从源码运行
 
@@ -95,6 +95,15 @@ npm run dist
 Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/README_CN.md)。
 
 ---
+
+## 🆕 v1.2.2 更新内容
+
+- **快捷粘贴面板**：在目标输入框按全局热键（默认 `Ctrl+Shift+V`），搜索或点选文字历史后，按 `Enter` 或点击“粘贴选中记录”，直接粘贴回原应用。
+- `Ctrl+Enter` 仅复制并收起；`Esc` 取消。复制图标及 `Ctrl+1`–`Ctrl+9` 继续仅复制；图片暂不支持直接粘贴。通过托盘打开时保持原来的管理操作。
+- 发送前核对原窗口、进程、前台焦点和剪贴板序号，等待确认键释放；切走、取消和重启会清除目标。失败时提示检查目标内容，保留可用的复制结果，不自动重试或提交表单。
+- Android 同步为 **1.2.2 / 版本代码 9**，手机功能不变。历史和备份格式保持兼容。
+
+使用边界与验证见 [v1.2.2 发布说明](docs/releases/v1.2.2.md)。
 
 ## 🆕 v1.2.1 更新内容
 

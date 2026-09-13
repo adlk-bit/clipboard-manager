@@ -9,6 +9,7 @@ import { useI18n } from '../lib/i18n'
 import type { HistoryContentType } from '../../shared/history-query'
 
 interface HistoryListProps {
+  quickPasteActive?: boolean
   onCopy: (msg: string) => void
   onEdit: (item: HistoryItem) => void
   onTemplate: (item: HistoryItem) => void
@@ -16,7 +17,7 @@ interface HistoryListProps {
   onMerge: (items: HistoryItem[]) => void
 }
 
-export default function HistoryList({ onCopy, onEdit, onMerge, onTemplate, onOcr }: HistoryListProps) {
+export default function HistoryList({ onCopy, onEdit, onMerge, onTemplate, onOcr, quickPasteActive = false }: HistoryListProps) {
   const { t, language } = useI18n()
   const q = useWords()
   const [queueError, setQueueError] = useState('')
@@ -215,7 +216,7 @@ export default function HistoryList({ onCopy, onEdit, onMerge, onTemplate, onOcr
           </div>
         )}
       </div>
-      {!selectionMode && <div className="shrink-0 border-t border-[#e6e6e9] px-2 py-1 text-center text-[10px] text-gray-500 dark:border-white/[0.07] dark:text-gray-400" title={t('history.keyboardMore')}>{t('history.keyboard')}</div>}
+      {!selectionMode && <div className="shrink-0 border-t border-[#e6e6e9] px-2 py-1 text-center text-[10px] text-gray-500 dark:border-white/[0.07] dark:text-gray-400" title={t('history.keyboardMore')}>{quickPasteActive ? q('↑↓ 选择 · Enter 粘贴 · Ctrl+Enter 仅复制', '↑↓ Select · Enter Paste · Ctrl+Enter Copy only') : t('history.keyboard')}</div>}
     </div>
   )
 }
