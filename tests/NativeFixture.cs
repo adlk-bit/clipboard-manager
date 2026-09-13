@@ -13,6 +13,7 @@ class NativeFixture : Form {
   TextBox box = new TextBox { Multiline = true, Dock = DockStyle.Fill };
   [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
   [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
   [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
   [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hwnd, int id);
   protected override void WndProc(ref Message message) {
@@ -68,6 +69,20 @@ class NativeFixture : Form {
               if (GetForegroundWindow() != Handle) throw new Exception("Fixture must be foreground before injecting test shortcut");
               INPUT[] inputs = { K(0x11,false), K(0x10,false), K(0x12,false), K(0x56,false), K(0x56,true), K(0x12,true), K(0x10,true), K(0x11,true) };
               if (SendInput(8, inputs, Marshal.SizeOf(typeof(INPUT))) != 8) throw new Exception("Shortcut input failed");
+            }
+            if (action == "quick-shortcut") {
+              if (GetForegroundWindow() != Handle) throw new Exception("Fixture must be foreground before injecting quick-paste shortcut");
+              INPUT[] inputs = { K(0x11,false), K(0x10,false), K(0x7A,false), K(0x7A,true), K(0x10,true), K(0x11,true) };
+              if (SendInput(6, inputs, Marshal.SizeOf(typeof(INPUT))) != 6) throw new Exception("Shortcut input failed");
+            }
+            if (action == "panel-key") {
+              IntPtr panel = new IntPtr(Convert.ToInt64(request["handle"]));
+              uint panelPid; GetWindowThreadProcessId(panel, out panelPid);
+              if (GetForegroundWindow() != panel || panelPid != Convert.ToUInt32(request["pid"])) throw new Exception("Test panel must own foreground");
+              ushort key = Convert.ToUInt16(request["key"]);
+              bool ctrl = request.ContainsKey("ctrl") && Convert.ToBoolean(request["ctrl"]);
+              INPUT[] inputs = ctrl ? new INPUT[] { K(0x11,false), K(key,false), K(key,true), K(0x11,true) } : new INPUT[] { K(key,false), K(key,true) };
+              if (SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) != inputs.Length) throw new Exception("Panel key failed");
             }
             Write(new { ok = true });
           } catch (Exception error) { Write(new { error = error.Message }); }

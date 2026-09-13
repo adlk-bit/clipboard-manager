@@ -54,8 +54,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download:
 
-- Windows: [ClipboardManager-Setup-1.2.1.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.1/ClipboardManager-Setup-1.2.1.exe); run it to install.
-- Android: [ClipboardManager-Android-1.2.1.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.1/ClipboardManager-Android-1.2.1.apk); allow your browser or file manager to install unknown apps, then install it.
+- Windows: [ClipboardManager-Setup-1.2.2.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Setup-1.2.2.exe); run it to install.
+- Android: [ClipboardManager-Android-1.2.2.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Android-1.2.2.apk); allow your browser or file manager to install unknown apps, then install it.
 
 ### Build from Source
 
@@ -95,6 +95,15 @@ npm run dist
 See [android/README.md](android/README.md) for Android source, build, install, and privacy details.
 
 ---
+
+## 🆕 What's New in v1.2.2
+
+- **Quick paste panel:** press the global shortcut (default `Ctrl+Shift+V`) from a destination input, search or select a text record, then press `Enter` or click **Paste selected** to paste back into the original app.
+- `Ctrl+Enter` copies and hides; `Esc` cancels. Copy icons and `Ctrl+1`–`Ctrl+9` remain copy-only. Images are copy-only in this release. Opening from the tray retains the management workflow.
+- Before input, check the original window/process, foreground focus and clipboard sequence, and wait for confirmation keys to be released. Switching away, cancelling or restarting clears the target. Failures preserve a usable copy when possible and ask you to check the destination, without automatically retrying or submitting forms.
+- Android is synchronized to **1.2.2 / version code 9**, with unchanged phone features. Existing history and backup formats remain compatible.
+
+See [v1.2.2 release notes](docs/releases/v1.2.2.md) for validation and compatibility limits.
 
 ## 🆕 What's New in v1.2.1
 

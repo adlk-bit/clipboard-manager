@@ -16,6 +16,7 @@ import Toast from './components/Toast'
 import { useStore } from './stores/useStore'
 import type { HistoryItem } from './types'
 import { useI18n } from './lib/i18n'
+import type { QuickPasteStatus } from '../shared/quick-paste'
 
 export default function App() {
   const { t, language } = useI18n()
@@ -39,6 +40,8 @@ export default function App() {
   const [templateItem, setTemplateItem] = useState<HistoryItem | null>(null)
   const [ocrItem, setOcrItem] = useState<HistoryItem | null>(null)
   const copyingRef = useRef(false)
+  const [quick, setQuick] = useState<QuickPasteStatus | null>(null)
+  const [quickNotice, setQuickNotice] = useState('')
   const openEditor = useCallback((item: HistoryItem) => setEditCopyItems([item]), [])
 
   const showToast = useCallback((message: string, type: 'success' | 'info' = 'success') => {
@@ -49,6 +52,49 @@ export default function App() {
   const clearToast = useCallback(() => {
     setToast(null)
   }, [])
+
+  useEffect(() => {
+    let revision = 0
+    let openedSession = -1
+    const receive = (value: QuickPasteStatus) => {
+      setQuick(value)
+      if (value.active && value.session !== openedSession) {
+        openedSession = value.session
+        if (document.querySelector('[role="dialog"]')) {
+          void window.api.cancelQuickPaste()
+          return
+        }
+        setQuickNotice('')
+        const state = useStore.getState()
+        state.setCurrentPage('all')
+        requestAnimationFrame(() => document.getElementById('history-search')?.focus())
+      }
+    }
+    const unsubscribe = window.api.onQuickPasteChanged((value) => { revision++; receive(value) })
+    void window.api.getQuickPasteStatus().then((value) => { if (revision === 0) receive(value) })
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    if (quick?.active && (selectionMode || (currentPage !== 'all' && currentPage !== 'favorites'))) void window.api.cancelQuickPaste()
+  }, [currentPage, selectionMode, quick?.active])
+
+  const pasteItem = useCallback(async (item: HistoryItem | undefined) => {
+    if (!item || !quick?.active || quick.busy || copyingRef.current) return
+    if (item.type !== 'text') {
+      setQuickNotice(language === 'en' ? 'Images support copy only. Use Ctrl+Enter or the copy button.' : '图片请使用 Ctrl+Enter 或复制按钮，仅文字支持直接粘贴。')
+      return
+    }
+    copyingRef.current = true
+    try {
+      const result = await window.api.quickPaste(item.id, quick.session)
+      if (!result.success) setQuickNotice(result.copied
+        ? (language === 'en' ? 'Text copied. Paste could not be confirmed; check the destination before pasting manually.' : '文字已复制，未能确认粘贴完成；请先检查目标内容，再手动粘贴。')
+        : (language === 'en' ? 'Paste not completed. Reopen the panel or use the copy button.' : '粘贴未完成，请重新唤起面板或使用复制按钮。'))
+    } catch {
+      setQuickNotice(language === 'en' ? 'Paste result unknown. Check the destination before trying again.' : '粘贴结果未知，请检查目标内容后再操作。')
+    } finally { copyingRef.current = false }
+  }, [quick, language])
 
   useEffect(() => {
     loadHistory()
@@ -85,6 +131,7 @@ export default function App() {
       if (isTyping && !isSearch) return
       if (event.key === 'Escape') {
         event.preventDefault()
+        if (quick?.active) { await window.api.hideWindow(); return }
         if (selectionMode) state.setSelectionMode(false)
         else if (state.searchQuery) state.setSearchQuery('')
         else await window.api.hideWindow()
@@ -102,6 +149,11 @@ export default function App() {
           await window.api.hideWindow()
         } catch { showToast(t('card.copyFailed'), 'info') }
         finally { copyingRef.current = false }
+      }
+      if (event.key === 'Enter' && event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey) {
+        event.preventDefault()
+        await copyItem(historyItems.find((item) => item.id === keyboardActiveId) || historyItems[0])
+        return
       }
       if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && /^[1-9]$/.test(event.key)) {
         event.preventDefault()
@@ -131,7 +183,9 @@ export default function App() {
 
       if (event.key === 'Enter') {
         event.preventDefault()
-        await copyItem(historyItems.find((item) => item.id === keyboardActiveId) || historyItems[0])
+        const item = historyItems.find((item) => item.id === keyboardActiveId) || historyItems[0]
+        if (quick?.active) { if (!event.repeat) await pasteItem(item) }
+        else await copyItem(item)
       }
     }
 
@@ -142,7 +196,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('blur', clearKeyboardSelection)
     }
-  }, [currentPage, historyItems, keyboardActiveId, selectionMode, historyLoading, setKeyboardActiveId, editCopyItems, confirmDeleteId, confirmClearAll, confirmBatchDelete, openEditor, showToast, t])
+  }, [currentPage, historyItems, keyboardActiveId, selectionMode, historyLoading, setKeyboardActiveId, editCopyItems, confirmDeleteId, confirmClearAll, confirmBatchDelete, openEditor, showToast, t, quick, pasteItem])
 
   return (
     <Layout>
@@ -162,9 +216,20 @@ export default function App() {
         </div>
 
         <QueueBar />
+        {(quick?.active || quick?.busy || quickNotice) && <section aria-label={language === 'en' ? 'Quick paste' : '快捷粘贴'} className="no-drag shrink-0 space-y-1 border-b border-primary-200 bg-primary-50 p-2 text-xs dark:border-primary-900 dark:bg-primary-900/20 dark:text-gray-100">
+          {(quick?.active || quick?.busy) && <>
+            <p className="truncate font-medium">{language === 'en' ? 'Paste to: ' : '粘贴到：'}{quick.target || (language === 'en' ? 'Copy only (target unavailable)' : '仅复制（目标不可用）')}</p>
+            <p className="text-[10px]">{language === 'en' ? 'Enter: paste · Ctrl+Enter: copy only · Esc: cancel' : 'Enter 粘贴 · Ctrl+Enter 仅复制 · Esc 取消'}</p>
+            <div className="flex gap-2">
+              <button type="button" disabled={quick.busy || historyLoading || !historyItems.length} className="rounded bg-primary-500 px-2 py-1 text-white disabled:opacity-40" onClick={() => void pasteItem(historyItems.find((item) => item.id === keyboardActiveId) || historyItems[0])}>{quick.busy ? (language === 'en' ? 'Pasting…' : '正在粘贴…') : (language === 'en' ? 'Paste selected' : '粘贴选中记录')}</button>
+              <button type="button" disabled={quick.busy} onClick={() => void window.api.hideWindow()}>{language === 'en' ? 'Cancel' : '取消'}</button>
+            </div>
+          </>}
+          {quickNotice && <p role="alert" className="text-[11px]">{quickNotice}<button type="button" className="ml-2 underline" onClick={() => setQuickNotice('')}>{language === 'en' ? 'Dismiss' : '关闭提示'}</button></p>}
+        </section>}
         {/* Content */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList onCopy={showToast} onEdit={openEditor} onMerge={setEditCopyItems} onTemplate={setTemplateItem} onOcr={setOcrItem} />}
+          {(currentPage === 'all' || currentPage === 'favorites') && <HistoryList quickPasteActive={quick?.active} onCopy={showToast} onEdit={openEditor} onMerge={setEditCopyItems} onTemplate={setTemplateItem} onOcr={setOcrItem} />}
           {currentPage === 'templates' && <TemplatesPanel onCopied={showToast} />}
           {currentPage === 'emoji' && <EmojiPicker onCopy={showToast} />}
           {currentPage === 'stickers' && <StickerGrid onCopy={showToast} />}

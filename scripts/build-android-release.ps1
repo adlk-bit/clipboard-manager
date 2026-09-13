@@ -1,5 +1,6 @@
 param(
-    [string]$AndroidSdk = ""
+    [string]$AndroidSdk = "",
+    [switch]$BuildOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -88,7 +89,11 @@ $env:CLIPBOARD_MANAGER_ANDROID_KEY_PASSWORD = $plainPassword
 
 Push-Location $androidRoot
 try {
-    & .\gradlew.bat clean testDebugUnitTest lintRelease assembleRelease --warning-mode all
+    if ($BuildOnly) {
+        & .\gradlew.bat assembleRelease --warning-mode all
+    } else {
+        & .\gradlew.bat clean testDebugUnitTest lintRelease assembleRelease --warning-mode all
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "Android release build failed with exit code $LASTEXITCODE"
     }

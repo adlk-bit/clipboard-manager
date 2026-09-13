@@ -126,7 +126,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
   const handleClick = () => {
     if (selectionMode) {
       toggleSelectId(item.id)
-    }
+    } else useStore.getState().setKeyboardActiveId(item.id)
   }
 
   return (

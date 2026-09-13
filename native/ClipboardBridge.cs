@@ -22,6 +22,7 @@ internal sealed class ClipboardBridge : NativeWindow
     [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
     [DllImport("user32.dll")] private static extern IntPtr GetClipboardOwner();
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hwnd, int index);
@@ -91,14 +92,39 @@ internal sealed class ClipboardBridge : NativeWindow
             }
             return (GetWindowLong(handle, -20) & 0x00000008) != 0;
         }
-        if (action == "paste")
+        if (action == "paste" || action == "restoreAndPaste")
         {
             uint pid = Convert.ToUInt32(request["pid"]);
             if (pid == parentPid || pid == 0 || Pid(handle) != pid) throw new Exception("invalid-target");
-            // The user chooses the destination by focusing it, then pressing the
-            // queue shortcut. Never steal focus or paste into a substituted HWND.
-            for (int i = 0; i < 100 && ModifiersDown(); i++) Thread.Sleep(15);
-            if (ModifiersDown()) throw new Exception("release-shortcut");
+            bool restore = action == "restoreAndPaste";
+            bool waitEnter = restore || (request.ContainsKey("waitForEnter") && Convert.ToBoolean(request["waitForEnter"]));
+            IntPtr from = IntPtr.Zero;
+            if (restore)
+            {
+                long rawFrom;
+                if (!request.ContainsKey("fromHandle") || !Int64.TryParse(Convert.ToString(request["fromHandle"]), out rawFrom)) throw new Exception("invalid-window");
+                from = new IntPtr(rawFrom);
+                if (!IsWindow(from) || Pid(from) != parentPid || GetForegroundWindow() != from) throw new Exception("target-changed");
+            }
+            // Wait for Enter as well as modifiers before restoring the input
+            // target; a held confirmation key must never submit a target form.
+            for (int i = 0; i < 100 && (ModifiersDown() || (waitEnter && (GetAsyncKeyState(0x0D) & 0x8000) != 0)); i++) Thread.Sleep(15);
+            if (ModifiersDown() || (waitEnter && (GetAsyncKeyState(0x0D) & 0x8000) != 0)) throw new Exception("release-shortcut");
+            if (restore)
+            {
+                if (!IsWindow(handle) || Pid(handle) != pid) throw new Exception("window-closed");
+                if (GetForegroundWindow() != from || Pid(from) != parentPid) throw new Exception("target-changed");
+                SetForegroundWindow(handle);
+            }
+            if (waitEnter) {
+                // Window activation can finish asynchronously. Wait only
+                // while our own panel (or no window) still owns foreground.
+                for (int i = 0; i < 30; i++) {
+                    IntPtr foreground = GetForegroundWindow();
+                    if (foreground == handle || (foreground != IntPtr.Zero && Pid(foreground) != parentPid)) break;
+                    Thread.Sleep(10);
+                }
+            }
             if (!IsWindow(handle) || GetForegroundWindow() != handle || Pid(handle) != pid) throw new Exception("target-changed");
             if (!request.ContainsKey("sequence") || GetClipboardSequenceNumber() != Convert.ToUInt32(request["sequence"])) throw new Exception("clipboard-changed");
             INPUT[] inputs = { Key(0x11, false), Key(0x56, false), Key(0x56, true), Key(0x11, true) };
@@ -115,8 +141,20 @@ internal sealed class ClipboardBridge : NativeWindow
     }
     [STAThread] private static void Main(string[] args)
     {
-        if (args.Length != 1 || !Int32.TryParse(args[0], out parentPid)) return;
+        if (args.Length < 1 || !Int32.TryParse(args[0], out parentPid)) return;
         Console.InputEncoding = new UTF8Encoding(false); Console.OutputEncoding = new UTF8Encoding(false);
+        if (args.Length == 2 && args[1] == "--quick-paste") {
+            // Launched by the foreground Electron process at confirmation time;
+            // Windows grants this child normal foreground activation rights.
+            try {
+                string line = Console.ReadLine();
+                if (line == null || line.Length > 4096) throw new Exception("invalid-request");
+                var request = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(line);
+                if (Convert.ToString(request["action"]) != "restoreAndPaste") throw new Exception("invalid-request");
+                Write(new { result = Command(request) });
+            } catch (Exception error) { Write(new { error = error.Message }); }
+            return;
+        }
         var window = new ClipboardBridge();
         window.CreateHandle(new CreateParams { Caption = "ClipboardManagerBridge", Parent = new IntPtr(-3) });
         lastSequence = GetClipboardSequenceNumber();

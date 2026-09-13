@@ -6,6 +6,7 @@ import path from 'node:path'
 import initSqlJs from 'sql.js'
 import { runEfficiencySmoke } from './runtime-efficiency.mjs'
 import { runProductivitySmoke, verifyProductivityRestart } from './runtime-productivity.mjs'
+import { runQuickPasteSmoke } from './runtime-quick-paste.mjs'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 const electronExe = process.env.RUNTIME_EXECUTABLE || path.join(repoRoot, 'node_modules', 'electron', 'dist', 'electron.exe')
@@ -229,6 +230,7 @@ async function runElectron(port, assertion) {
 try {
   await seedRuntimeProfile()
   await runElectron(9321, async (cdp) => {
+    if (process.env.RUNTIME_QUICK_PASTE_ONLY === '1') { await runQuickPasteSmoke(cdp); return }
     if (process.env.RUNTIME_PRODUCTIVITY_ONLY === '1') { await runProductivitySmoke(cdp); return }
     if (process.env.RUNTIME_EFFICIENCY_ONLY === '1') {
       const setup = await cdp.evaluate(`(async () => {
@@ -456,6 +458,13 @@ try {
   })
 
   if (process.env.RUNTIME_EFFICIENCY_ONLY !== '1') await runElectron(9322, async (cdp) => {
+    if (process.env.RUNTIME_QUICK_PASTE_ONLY === '1') {
+      const result = await cdp.evaluate('window.api.getQuickPasteStatus()')
+      assert.equal(result.result.value.active, false)
+      assert.equal(result.result.value.target, '')
+      console.log('Quick-paste target is cleared across restart.')
+      return
+    }
     if (process.env.RUNTIME_PRODUCTIVITY_ONLY === '1') { await verifyProductivityRestart(cdp); return }
     const restored = await cdp.evaluate('window.api.getMonitorPaused()')
     assert.equal(restored.result.value, true)
@@ -486,7 +495,7 @@ try {
     assert.equal(resumed.result.value, false)
   })
 
-  if (process.env.RUNTIME_PRODUCTIVITY_ONLY !== '1' && process.env.RUNTIME_EFFICIENCY_ONLY !== '1') console.log('Runtime smoke passed: sensitive previews, metadata search, persistent always-on-top, Emoji UI, phone device UI/service, settings, validation, and pause persistence work across restart.')
+  if (process.env.RUNTIME_QUICK_PASTE_ONLY !== '1' && process.env.RUNTIME_PRODUCTIVITY_ONLY !== '1' && process.env.RUNTIME_EFFICIENCY_ONLY !== '1') console.log('Runtime smoke passed: sensitive previews, metadata search, persistent always-on-top, Emoji UI, phone device UI/service, settings, validation, and pause persistence work across restart.')
 } finally {
   if (path.dirname(profileDir) !== os.tmpdir() || !path.basename(profileDir).startsWith('clipboard-manager-runtime-')) throw new Error('Unexpected test profile path')
   await rm(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }).catch((error) => { console.warn(`Temporary profile cleanup deferred (${error.code}).`); process.exitCode = 1 })

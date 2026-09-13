@@ -1,8 +1,17 @@
 import type { QueueStatus } from '../../shared/productivity'
+import type { QuickPasteStatus } from '../../shared/quick-paste'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { HistoryContentType } from '../../shared/history-query'
 
 const api = {
+  getQuickPasteStatus: () => ipcRenderer.invoke('quick-paste:status'),
+  cancelQuickPaste: () => ipcRenderer.invoke('quick-paste:cancel'),
+  quickPaste: (id: number, session: number) => ipcRenderer.invoke('quick-paste:paste', id, session),
+  onQuickPasteChanged: (callback: (status: QuickPasteStatus) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: QuickPasteStatus) => callback(status)
+    ipcRenderer.on('quick-paste:changed', listener)
+    return () => ipcRenderer.removeListener('quick-paste:changed', listener)
+  },
   getTemplates: () => ipcRenderer.invoke('templates:list'),
   saveTemplate: (id: number | null, title: string, body: string) => ipcRenderer.invoke('templates:save', id, title, body),
   deleteTemplate: (id: number) => ipcRenderer.invoke('templates:delete', id),
