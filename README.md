@@ -4,6 +4,7 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 
 [中文版](README_CN.md)
 
+[![Latest release](https://img.shields.io/github/v/release/adlk-bit/clipboard-manager?sort=semver)](https://github.com/adlk-bit/clipboard-manager/releases/latest)
 [![CI](https://github.com/adlk-bit/clipboard-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/adlk-bit/clipboard-manager/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -11,11 +12,11 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 
 ---
 
-## Runtime Screenshot
+## Runtime Preview
 
-![Clipboard Manager v1.2.0 history filters in dark mode](docs/images/history-v1.2.0-en.png)
+![Clipboard Manager history filters in dark mode](docs/images/history-v1.2.0-en.png)
 
-Captured from the actual Electron runtime at the default 400 × 600 window size. The interface can switch immediately between Simplified Chinese and English from Settings.
+Captured from the actual Electron runtime at the default 400 × 600 window size. The current release is **v1.2.2**; the interface can switch immediately between Simplified Chinese and English from Settings.
 
 ---
 
@@ -23,7 +24,8 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 | Module | Description |
 |------|------|
-| 🔄 **Live Auto-Capture** | New clipboard entries appear in the open window immediately; text and images are saved in the background |
+| 🔄 **Live Auto-Capture** | Native clipboard-change notifications plus sequence checks capture new text and images immediately without repeatedly encoding unchanged images |
+| ⚡ **Quick Paste** | Open from a destination with the global shortcut, choose a text record, and paste it back to the original app with `Enter`; copy-only and safe-fallback paths remain available |
 | ⏸️ **Privacy Pause** | Pause or resume capture from the history toolbar or tray; the choice persists across restarts and content copied while paused is not captured later |
 | ♻️ **Smart Deduplication** | Identical text and images merge into one entry with a usage count and last-used time, keeping history compact |
 | 🔥 **Frequently Used View** | Switch between newest and most-used entries to reach recurring content faster |
@@ -32,6 +34,10 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 | 👁️ **Sensitive Preview Masking** | Hide phone numbers, email addresses, IDs, valid bank cards, and common secrets in previews while preserving the original copied value |
 | 🔗 **Quick-Open URLs** | URL-only clipboard items can be opened safely in the default browser |
 | ✏️ **Edit Before Copy** | Trim lines, remove blank/duplicate lines, join lines, change case, format/minify JSON, undo, and reset without overwriting the original record |
+| 🧩 **Phrases & Templates** | Save reusable text with `{{variables}}`, fill values, preview the result, and copy it with date/time defaults |
+| ⏭️ **Sequential Paste Queue** | Queue multiple text records and paste them one at a time with `Ctrl+Shift+Alt+V`, including pause, skip, rewind, and target checks |
+| 🔎 **Local OCR** | Recognize clipboard images with installed Windows OCR languages, search or edit the result, and clear cached indexes |
+| 🎯 **Source Controls** | Filter history by source app and exclude selected process names from capture |
 | 😀 **Emoji Picker** | Browse 233 built-in Emoji across seven categories, search in Chinese or English, and quickly reuse recent choices |
 | 🖼️ **Sticker Library** | Import local images as stickers, click to copy to clipboard |
 | 📱 **Phone Sharing** | Pair iPhone or Android over the same LAN, exchange text with Windows, and manage connected devices |
@@ -40,9 +46,10 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 | 🗑️ **Auto-Cleanup** | Choose 1 / 3 / 5 days or forever; expiry follows last use and removes linked image files |
 | 🌙 **Compact System UI** | A space-efficient light/dark interface with unified SVG icons, clear primary actions, and reduced-motion support |
 | 🌐 **Bilingual Interface** | Switch the full desktop interface between Simplified Chinese and English in Settings; the choice persists across restarts |
-| 📤 **Portable Backup & Restore** | `.clipbackup` includes text, images, stickers, favorite metadata, and safe settings; merge/replace restore and legacy JSON import are supported |
+| 📤 **Portable Backup & Restore** | Format 2 `.clipbackup` files include text, images, stickers, favorite metadata, templates, OCR indexes, source metadata/exclusions, and safe settings; older formats still import |
 | 🛡️ **Local Data Protection** | Atomic database snapshots, startup integrity repair, restricted local-asset access, CSP, and sandboxed rendering |
-| ⌨️ **Configurable Hotkey** | Record a new global shortcut directly in Settings; `Ctrl+Shift+V` is the default |
+| ⌨️ **Configurable Hotkey** | Record a new global shortcut directly in Settings; `Ctrl+Shift+V` opens quick paste by default |
+| 🚀 **Launch at Startup** | Enable or disable the packaged app's Windows login item from Settings |
 | 📊 **Storage Controls** | Set history capacity and maximum clipboard-image size, then inspect current usage |
 | 🪟 **Native Window Controls** | Frameless system-style header with persistent always-on-top, minimize, maximize/restore, and tray-safe close controls |
 
@@ -56,6 +63,8 @@ Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and dow
 
 - Windows: [ClipboardManager-Setup-1.2.2.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Setup-1.2.2.exe); run it to install.
 - Android: [ClipboardManager-Android-1.2.2.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Android-1.2.2.apk); allow your browser or file manager to install unknown apps, then install it.
+
+> **Signing note:** The v1.2.2 Windows installer is not Authenticode-signed, so Windows may show a SmartScreen warning. Download it only from this repository's official Release. The Android APK is v2-signed.
 
 ### Build from Source
 
@@ -74,7 +83,9 @@ npm run dev
 npm run dist
 ```
 
-> **Requirements:** Node.js ≥ 18 · npm ≥ 9 · Windows 10/11
+> **Desktop development requirements:** Windows 10/11 · Node.js 22 · npm. The Windows native bridge is compiled automatically by the build scripts.
+
+> **Android development requirements:** JDK 17 · Android SDK 36. See [android/README.md](android/README.md) for companion-app build instructions.
 
 ---
 
@@ -107,7 +118,7 @@ See [v1.2.2 release notes](docs/releases/v1.2.2.md) for validation and compatibi
 
 ## 🆕 What's New in v1.2.1
 
-This release adds all five follow-up features from the improvement notes. The Windows and Android downloads above are synchronized to v1.2.1 (Android version code 8; phone features are unchanged).
+v1.2.1 introduced all five follow-up features from the improvement notes. Its Android companion used version code 8; phone features were unchanged. The download links above always point to the current v1.2.2 release.
 
 - **Phrases and variable templates:** create from the sidebar or save a text history item; fill `{{name}}` variables and preview before copying, with current date/time defaults.
 - **Sequential paste queue:** select text records, focus the destination and press `Ctrl+Shift+Alt+V` for each item. Pause, skip, rewind and target-window checks are included.
@@ -173,9 +184,12 @@ See the [v1.2.0 release notes](docs/releases/v1.2.0.md) for downloads and valida
 
 | Action | How |
 |------|------|
-| Open window | `Ctrl+Shift+V` or double-click tray icon |
+| Open quick paste | Focus the destination field, then press the configured global shortcut (default `Ctrl+Shift+V`) |
+| Open management mode | Double-click the tray icon; tray opening keeps the normal management workflow |
+| Paste one text item | In quick paste, search or select with `↑/↓`, then press `Enter` or click **Paste selected** |
+| Copy without pasting | Click 📋, press `Ctrl+Enter` in quick paste, or use `Ctrl+1`–`Ctrl+9`; images remain copy-only |
+| Cancel quick paste | Press `Esc`; switching away, cancelling, or restarting clears the captured target |
 | Browse history | Sidebar → "All Records" |
-| Copy an item | Click 📋 on any card, or use ↑ / ↓ then Enter |
 | Edit then copy | Click the pencil button beside Copy, edit the text, then choose “Copy edited content” or press `Ctrl+Enter` |
 | Change history order | In All Records, choose “Newest” or “Frequently Used” |
 | Pause/resume capture | In All Records, click “Pause capture”, or use the tray menu |
@@ -184,9 +198,11 @@ See the [v1.2.0 release notes](docs/releases/v1.2.0.md) for downloads and valida
 | Organize favorites | In Favorites, use the card actions to edit folders/tags or reorder |
 | Open a URL | Hover a URL-only item → click 🔗 |
 | Delete | Hover card → click 🗑️ |
-| Batch select | Click “Manage” above the list; select at least two text records and choose “Merge & copy” |
-| Search | Press `Ctrl+F`; separate keywords with spaces and choose All / Text / Links / Images |
-| Quick copy | `Ctrl+1`–`Ctrl+9` copies the first nine results; use `↑/↓` + `Enter` while searching |
+| Batch select | Click “Manage” above the list; select text records to merge, delete, or start a sequential paste queue |
+| Sequential paste | Start a queue, focus the target app, then press `Ctrl+Shift+Alt+V` for each item; pause, skip, rewind, or retarget from the queue bar |
+| Search and source filter | Press `Ctrl+F`; separate keywords with spaces, choose All / Text / Links / Images, and optionally filter by source app |
+| Phrases/templates | Sidebar → "Phrases" → create or reuse a template, fill variables, preview, then copy |
+| Local OCR | Open an image card's OCR action, choose an installed Windows OCR language, then search or edit the recognized text |
 | Text tools | Open “Edit before copying” or “Merge & copy”, choose a tool, apply, and preview before copying |
 | Emoji | Sidebar → "Emoji" → choose a category or search → click an Emoji to copy |
 | Stickers | Sidebar → "Stickers" → Import → click image to copy |
@@ -194,7 +210,7 @@ See the [v1.2.0 release notes](docs/releases/v1.2.0.md) for downloads and valida
 | Android codes | Android companion → enable relay → grant notification access in system settings |
 | iPhone codes | Paired iPhone page → follow the Messages personal-automation guide |
 | Revoke phone | Sidebar → "Connected Devices" → paired device → 🗑️ |
-| Settings | Sidebar → "Settings" → retention / appearance / language / custom hotkey / storage limits |
+| Settings | Sidebar → "Settings" → retention / appearance / language / hotkey / startup / source exclusions / storage limits |
 | Backup | Settings → Complete Backup / Restore Backup, then choose merge or replace |
 
 ---
@@ -203,51 +219,46 @@ See the [v1.2.0 release notes](docs/releases/v1.2.0.md) for downloads and valida
 
 ```
 clipboard-manager/
-├── electron/main/                 # Main process
-│   ├── index.ts                   # Window, tray, hotkey
-│   ├── database.ts                # SQLite CRUD
-│   ├── clipboard-monitor.ts       # Clipboard polling
-│   ├── ipc-handlers.ts            # IPC handlers
+├── electron/main/                 # Electron main process
+│   ├── index.ts                   # Window, tray, global hotkey, and startup wiring
+│   ├── database.ts                # SQLite CRUD, templates, OCR/source metadata
+│   ├── clipboard-monitor.ts       # Native change notifications with sequence fallback
+│   ├── quick-paste.ts             # Single-item target capture and paste workflow
+│   ├── paste-queue.ts             # Sequential multi-item paste queue
+│   ├── productivity-ipc.ts        # Templates, OCR, source filters, and queue IPC
+│   ├── ocr-service.ts             # Local Windows OCR integration
+│   ├── auto-launch.ts             # Packaged Windows login-item state
+│   ├── windows-native.ts          # Narrow bridge to the Windows helper
 │   ├── mobile-sync.ts             # Phone LAN pairing, authentication, and sync
 │   ├── mobile-page.ts             # Phone web UI, Android deep link, and iOS Shortcut guide
 │   ├── backup.ts                  # Portable backup validation/archive
 │   ├── asset-paths.ts             # Managed local-asset boundaries
 │   └── scheduler.ts               # Expiry cleanup scheduler
-├── electron/preload/
-│   └── index.ts                   # Secure bridge API
-├── src/                           # Renderer (React)
+├── electron/preload/index.ts      # Secure renderer bridge API
+├── native/
+│   ├── ClipboardBridge.cs         # Clipboard events, foreground checks, and safe input
+│   └── ocr.ps1                    # Windows OCR helper
+├── src/                           # React renderer
 │   ├── App.tsx
 │   ├── components/
-│   │   ├── Layout.tsx             # Shell layout
-│   │   ├── Sidebar.tsx            # Nav (All / Favorites / Emoji / Stickers / Devices / Settings)
-│   │   ├── HistoryList.tsx        # History list
-│   │   ├── HistoryCard.tsx        # Card (edit / copy / pin / fav / delete)
-│   │   ├── EditCopyDialog.tsx     # Edit-before-copy dialog
-│   │   ├── EmojiPicker.tsx        # Searchable categorized Emoji picker
-│   │   ├── DevicesPanel.tsx       # QR pairing and connected-device management
-│   │   ├── Icon.tsx               # Shared SVG icon set
-│   │   ├── SearchBar.tsx          # Search input
-│   │   ├── StickerGrid.tsx        # Sticker grid
-│   │   ├── StickerCard.tsx        # Sticker card
-│   │   ├── SettingsPanel.tsx      # Settings panel
-│   │   ├── ExportImport.tsx       # Export & import
-│   │   ├── ConfirmDialog.tsx      # Confirm dialog
-│   │   └── Toast.tsx              # Toast notification
+│   │   ├── HistoryList.tsx        # History, quick-paste, and batch workflows
+│   │   ├── HistoryCard.tsx        # Card actions including OCR and templates
+│   │   ├── TemplatesPanel.tsx     # Reusable phrases and variables
+│   │   ├── OcrDialog.tsx          # OCR language/result workflow
+│   │   ├── QueueBar.tsx           # Sequential-paste controls
+│   │   ├── SourceFilter.tsx       # Source-app filtering
+│   │   ├── CaptureSettings.tsx    # Source exclusions and capture status
+│   │   ├── SettingsPanel.tsx      # Settings including hotkey and startup
+│   │   └── ...                    # Devices, Emoji, stickers, dialogs, and shared UI
 │   ├── stores/useStore.ts         # Zustand state
 │   ├── data/emojis.ts             # Built-in Emoji catalog and keywords
-│   ├── types/index.ts             # TypeScript types
 │   └── styles/index.css           # Tailwind + global styles
-├── resources/                     # Static assets
-│   ├── icon.png                   # App icon (256×256)
-│   ├── icon.ico                   # Windows icon
-│   └── tray-icon.png              # Tray icon (16×16)
+├── shared/                        # Testable shared query, productivity, and paste logic
+├── resources/                     # App and tray icons
 ├── android/                       # Open-source Kotlin Android companion
-│   ├── app/src/main/              # Deep-link pairing, clipboard, and notification-code relay
-│   ├── app/src/test/              # Private-network and OTP extraction tests
-│   └── README.md                  # Android build, install, and privacy notes
+├── scripts/build-native.mjs       # Builds the Windows helper before dev/build/package
 ├── electron.vite.config.ts
 ├── electron-builder.yml
-├── tailwind.config.js
 └── package.json
 ```
 
@@ -262,6 +273,7 @@ flowchart LR
   Preload <--> Main
   Main --> DB[(Local SQLite/WASM snapshot)]
   Main --> Assets[Managed local image files]
+  Main <--> Native[Windows helper: capture, OCR, safe paste]
   Phone[iPhone browser / Android companion] -->|Authenticated LAN HTTP| Pairing[Pairing and sync service]
   Pairing --> Main
   AndroidNotifications[Android message notifications] --> Filter[On-device six-digit filter]
@@ -271,7 +283,7 @@ flowchart LR
 - The renderer is sandboxed and cannot access Node.js directly; validated IPC methods cross the preload boundary.
 - Clipboard history, images, settings, pairing hashes, and backups remain on the user's devices. The project does not operate a cloud relay.
 - Phone pairing is intentionally limited to private numeric IPv4 addresses, short-lived single-use QR tokens, authenticated requests, and explicit revocation.
-- Windows and Android release signing are maintainer-controlled and are not performed by pull-request CI.
+- Android release signing is maintainer-controlled and is not performed by pull-request CI. The v1.2.2 Windows installer is not Authenticode-signed.
 
 ### Privacy Threat Model
 
@@ -281,7 +293,7 @@ flowchart LR
 | Renderer, IPC, and local files | Untrusted renderer input, navigation, arbitrary file access | Context isolation, sandbox, CSP, denied navigation, narrow preload API, validated IPC input, managed asset directories | A compromised OS account or local process is outside the application's isolation boundary |
 | LAN pairing and sync | Public-network exposure, token reuse, unauthorized device, leaked device secret | Private IPv4 validation, five-minute single-use tokens, hashed secrets on Windows, authenticated requests, per-device controls and revocation | Transport is HTTP, not end-to-end encrypted; use trusted private Wi-Fi only and never share a live QR/URL |
 | Android verification codes | Excessive notification collection, SMS permission abuse, replay | No SMS permissions, explicit notification access, message/context checks, unique six-digit extraction, deduplication, code-only relay, no history retention | Notification access is powerful; enable it only when needed and review the Android source/build |
-| Backups and release artifacts | Path traversal, malformed archive, leaked signing material, substituted binary | Archive validation and size limits, managed extraction paths, CI tests/lint, local signing secrets, published artifact names | Backups contain private clipboard data and are not encrypted by the app; store and transfer them securely |
+| Backups and release artifacts | Path traversal, malformed archive, leaked signing material, substituted binary | Archive validation and size limits, managed extraction paths, CI tests/lint, Android signing keys kept outside the repository, published artifact names | Backups are not encrypted; the v1.2.2 Windows installer is unsigned. Store backups securely and download releases only from this repository |
 
 Security reports should use the private process in [SECURITY.md](SECURITY.md), not a public Issue.
 
