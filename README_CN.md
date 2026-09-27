@@ -4,6 +4,7 @@
 
 [English](README.md)
 
+[![最新版本](https://img.shields.io/github/v/release/adlk-bit/clipboard-manager?sort=semver)](https://github.com/adlk-bit/clipboard-manager/releases/latest)
 [![CI](https://github.com/adlk-bit/clipboard-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/adlk-bit/clipboard-manager/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -13,9 +14,9 @@
 
 ## 真实运行截图
 
-![Clipboard Manager v1.2.0 中文历史筛选界面](docs/images/history-v1.2.0-zh.png)
+![Clipboard Manager 中文历史筛选界面](docs/images/history-v1.2.0-zh.png)
 
-截图来自实际 Electron 运行时，窗口为默认 400 × 600；可在设置中即时切换简体中文与英文。
+截图来自实际 Electron 运行时，窗口为默认 400 × 600。当前发布版本为 **v1.2.2**；可在设置中即时切换简体中文与英文。
 
 ---
 
@@ -23,7 +24,8 @@
 
 | 模块 | 说明 |
 |------|------|
-| 🔄 **实时自动记录** | 后台监听剪贴板，窗口打开时新记录会立即同步到列表 |
+| 🔄 **实时自动记录** | 通过原生剪贴板变更通知与序号检查及时记录文字和图片，避免重复编码未变化的图片 |
+| ⚡ **快捷粘贴** | 在目标应用按全局热键，选择文字记录后按 `Enter` 粘贴回原应用；支持仅复制及失败时安全回退 |
 | ⏸️ **隐私暂停** | 可从历史工具栏或托盘暂停/恢复记录；状态会跨重启保留，暂停期间复制的内容恢复后也不会补录 |
 | ♻️ **智能去重** | 相同文字和图片自动合并，记录累计使用次数与最近使用时间，让历史更精简 |
 | 🔥 **常用优先** | 可在最新与常用记录之间切换，更快找到高频内容 |
@@ -32,6 +34,10 @@
 | 👁️ **敏感预览脱敏** | 预览时隐藏手机号、邮箱、身份证、有效银行卡及常见密钥，复制仍保留原文 |
 | 🔗 **链接快捷打开** | 仅包含网址的记录可安全地在默认浏览器中打开 |
 | ✏️ **编辑后复制** | 支持去首尾空白、去空行、按行去重、合为一行、大小写转换、JSON 格式化/压缩、撤销和重置，不覆盖原始记录 |
+| 🧩 **常用短语与变量模板** | 保存带 `{{变量}}` 的常用文字，填写变量、预览后复制，支持当前日期和时间默认值 |
+| ⏭️ **顺序粘贴队列** | 将多条文字加入队列，用 `Ctrl+Shift+Alt+V` 逐条粘贴，支持暂停、跳过、退一条和目标窗口校验 |
+| 🔎 **本地 OCR** | 使用已安装的 Windows OCR 语言识别图片，可搜索、编辑识别结果或清除索引 |
+| 🎯 **来源控制** | 按来源应用筛选历史，并按进程名排除不希望采集的应用 |
 | 😀 **Emoji 选择器** | 内置 7 类 233 个 Emoji，支持中英文搜索与最近使用，可一键复制 |
 | 🖼️ **贴图库** | 导入本地图片存入贴图库，点击一键复制到剪贴板 |
 | 📱 **手机共享** | iPhone 与 Android 均可在同一局域网扫码配对、与 Windows 双向发送文字，并管理已连接设备 |
@@ -40,9 +46,10 @@
 | 🗑️ **自动清理** | 支持 1 天 / 3 天 / 5 天 / 永久，按最近使用时间判断过期并同步清理图片文件 |
 | 🌙 **紧凑系统界面** | 节省空间的浅色 / 深色界面，统一 SVG 图标、清晰主操作，并支持减少动效偏好 |
 | 🌐 **中英文界面** | 可在设置中切换完整桌面界面的简体中文 / English，选择会跨重启保留 |
-| 📤 **完整便携备份** | `.clipbackup` 包含文字、图片、贴图库、收藏元数据和安全设置，支持合并/覆盖恢复及旧版 JSON 导入 |
+| 📤 **完整便携备份** | 格式 2 `.clipbackup` 包含文字、图片、贴图库、收藏元数据、模板、OCR 索引、来源元数据/排除规则和安全设置，支持合并/覆盖恢复及旧格式导入 |
 | 🛡️ **本地数据保护** | 数据库原子快照、启动完整性修复、受限本地资源访问、CSP 与沙箱渲染 |
-| ⌨️ **可配置全局热键** | 可直接在设置中录入新快捷键，默认 `Ctrl+Shift+V` |
+| ⌨️ **可配置全局热键** | 可直接在设置中录入新快捷键，默认 `Ctrl+Shift+V` 打开快捷粘贴面板 |
+| 🚀 **开机自动启动** | 在设置中启用或禁用安装版应用的 Windows 登录启动项 |
 | 📊 **存储控制** | 可限制历史条目数和单张图片大小，并查看当前占用 |
 | 🪟 **原生窗口控制** | 无边框系统风格标题栏，支持持久化窗口置顶、最小化、最大化/还原与关闭到托盘 |
 
@@ -56,6 +63,8 @@
 
 - Windows：[ClipboardManager-Setup-1.2.2.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Setup-1.2.2.exe)，双击运行安装。
 - Android：[ClipboardManager-Android-1.2.2.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Android-1.2.2.apk)，允许浏览器或文件管理器“安装未知应用”后安装。
+
+> **签名说明：** v1.2.2 Windows 安装包未做 Authenticode 签名，Windows 可能显示 SmartScreen 提示。请仅从本仓库的官方 Release 下载。Android APK 已通过 v2 签名。
 
 ### 从源码运行
 
@@ -74,7 +83,9 @@ npm run dev
 npm run dist
 ```
 
-> **环境要求：** Node.js ≥ 18 · npm ≥ 9 · Windows 10/11
+> **桌面开发环境：** Windows 10/11 · Node.js 22 · npm。构建脚本会自动编译 Windows 原生辅助程序。
+
+> **Android 开发环境：** JDK 17 · Android SDK 36。配套应用构建方法见 [android/README_CN.md](android/README_CN.md)。
 
 ---
 
@@ -107,7 +118,7 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 
 ## 🆕 v1.2.1 更新内容
 
-上一轮改进说明中的五项后续功能已纳入 v1.2.1。上方 Windows 与 Android 下载链接已同步；Android 版本代码为 8，手机功能不变。
+v1.2.1 纳入了上一轮改进说明中的五项后续功能。该版本 Android 配套端的版本代码为 8，手机功能不变。上方下载链接指向当前 v1.2.2 版本。
 
 - **常用短语与变量模板**：侧栏新建，或从文字历史保存为模板。填写 `{{姓名}}` 等变量，预览后复制；支持当前日期、时间默认值。
 - **顺序粘贴队列**：多选文字后建立队列，切到目标应用按 `Ctrl+Shift+Alt+V` 逐条粘贴；支持暂停、跳过、退一条和目标窗口校验。
@@ -173,9 +184,12 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 
 | 操作 | 方式 |
 |------|------|
-| 打开窗口 | `Ctrl+Shift+V` 或双击系统托盘图标 |
+| 打开快捷粘贴 | 聚焦目标输入框后，按配置的全局热键（默认 `Ctrl+Shift+V`） |
+| 打开管理模式 | 双击系统托盘图标，使用常规管理操作 |
+| 粘贴单条文字 | 在快捷粘贴面板搜索、用 `↑/↓` 或点击卡片选中记录，再按 `Enter` 或点击「粘贴选中记录」 |
+| 仅复制、不粘贴 | 点击 📋、在快捷粘贴面板按 `Ctrl+Enter`，或用 `Ctrl+1`–`Ctrl+9`；图片仍仅支持复制 |
+| 取消快捷粘贴 | 按 `Esc`；切走、取消或重启会清除已捕获的目标 |
 | 查看记录 | 左侧导航 →「全部记录」 |
-| 复制记录 | 点击卡片右侧 📋 图标，或用 ↑ / ↓ 选中后按 Enter |
 | 编辑后复制 | 点击复制按钮旁的铅笔图标，修改文字后点击「复制修改内容」或按 `Ctrl+Enter` |
 | 切换历史排序 | 在「全部记录」中选择「最新」或「常用」 |
 | 暂停/恢复记录 | 在「全部记录」点击「暂停记录」，或使用托盘菜单 |
@@ -184,9 +198,11 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 | 整理收藏 | 在「收藏」中通过卡片操作编辑文件夹、标签或调整顺序 |
 | 打开链接 | 悬停纯网址记录 → 点击 🔗 |
 | 删除 | 悬停卡片 → 点击 🗑️ |
-| 批量操作 | 点击列表顶部「批量管理」进入多选；选至少两条文字后点击「合并复制」 |
-| 搜索 | `Ctrl+F` 定位顶部搜索框；空格分隔多个关键词，按需选择文字 / 链接 / 图片 |
-| 快速复制 | `Ctrl+1`–`Ctrl+9` 复制当前列表前九条；搜索时也可用 `↑/↓` + `Enter` |
+| 批量操作 | 点击列表顶部「批量管理」进入多选，可批量删除；选至少两条文字后可「合并复制」，也可将文字记录加入顺序粘贴队列 |
+| 顺序粘贴 | 建立队列后聚焦目标应用，按 `Ctrl+Shift+Alt+V` 逐条粘贴；可在队列栏暂停、跳过、退一条或重新指定目标 |
+| 搜索与来源筛选 | `Ctrl+F` 定位顶部搜索框；空格分隔多个关键词，选择全部 / 文字 / 链接 / 图片，并可按来源应用筛选 |
+| 常用短语与模板 | 左侧 →「常用短语」→ 新建或复用模板 → 填写变量 → 预览后复制；也可从文字历史保存为模板 |
+| 本地 OCR | 点击图片卡片的 OCR 操作，选择已安装的 Windows OCR 语言，识别后搜索或编辑文字 |
 | 文本处理 | 「编辑后复制」或「合并复制」→ 选择处理工具 →「应用」→ 预览后复制 |
 | Emoji | 左侧 →「Emoji」→ 选择分类或搜索 → 点击 Emoji 复制 |
 | 贴图 | 左侧 →「贴图库」→ 导入 → 点击图片复制 |
@@ -194,7 +210,7 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 | Android 验证码 | Android 配套应用 → 开启转发 → 在系统设置授予通知访问 |
 | iPhone 验证码 | 配对后的 iPhone 页面 → 按说明创建“信息”个人自动化 |
 | 撤销手机 | 左侧 →「连接设备」→ 已连接设备 → 🗑️ |
-| 设置 | 左侧 →「设置」→ 存储期限 / 外观 / 语言 / 自定义热键 / 存储限制 |
+| 设置 | 左侧 →「设置」→ 存储期限 / 外观 / 语言 / 自定义热键 / 开机自动启动 / 来源排除 / 存储限制 |
 | 备份 | 设置 →「完整备份 / 恢复备份」，然后选择合并或覆盖 |
 
 ---
@@ -203,51 +219,46 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 
 ```
 clipboard-manager/
-├── electron/main/                 # 主进程
-│   ├── index.ts                   # 窗口、托盘、热键
-│   ├── database.ts                # SQLite 数据库 CRUD
-│   ├── clipboard-monitor.ts       # 剪贴板轮询
-│   ├── ipc-handlers.ts            # IPC 处理
+├── electron/main/                 # Electron 主进程
+│   ├── index.ts                   # 窗口、托盘、全局热键与启动流程
+│   ├── database.ts                # SQLite CRUD、模板、OCR/来源元数据
+│   ├── clipboard-monitor.ts       # 原生变更通知与序号检查回退
+│   ├── quick-paste.ts             # 单条记录目标捕获与快捷粘贴流程
+│   ├── paste-queue.ts             # 多条记录顺序粘贴队列
+│   ├── productivity-ipc.ts        # 模板、OCR、来源筛选与队列 IPC
+│   ├── ocr-service.ts             # 本地 Windows OCR 集成
+│   ├── auto-launch.ts             # Windows 安装版登录启动项状态
+│   ├── windows-native.ts          # Windows 原生辅助程序的受限桥接
 │   ├── mobile-sync.ts             # 手机局域网配对、鉴权与同步服务
 │   ├── mobile-page.ts             # 手机扫码网页、Android 深链与 iOS 快捷指引
 │   ├── backup.ts                  # 便携备份归档与校验
 │   ├── asset-paths.ts             # 本地资源访问边界
 │   └── scheduler.ts               # 过期清理定时器
-├── electron/preload/
-│   └── index.ts                   # 安全桥接 API
-├── src/                           # 渲染进程 (React)
+├── electron/preload/index.ts      # 安全的渲染进程桥接 API
+├── native/
+│   ├── ClipboardBridge.cs         # 剪贴板事件、前台窗口校验与安全输入
+│   └── ocr.ps1                    # Windows OCR 辅助脚本
+├── src/                           # React 渲染进程
 │   ├── App.tsx
 │   ├── components/
-│   │   ├── Layout.tsx             # 整体布局
-│   │   ├── Sidebar.tsx            # 侧边导航（全部/收藏/Emoji/贴图/设备/设置）
-│   │   ├── HistoryList.tsx        # 历史列表
-│   │   ├── HistoryCard.tsx        # 历史卡片（编辑/复制/置顶/收藏/删除）
-│   │   ├── EditCopyDialog.tsx     # 编辑后复制弹窗
-│   │   ├── EmojiPicker.tsx        # 可搜索分类 Emoji 选择器
-│   │   ├── DevicesPanel.tsx       # 二维码配对与已连接设备管理
-│   │   ├── Icon.tsx               # 统一 SVG 图标集
-│   │   ├── SearchBar.tsx          # 搜索栏
-│   │   ├── StickerGrid.tsx        # 贴图网格
-│   │   ├── StickerCard.tsx        # 贴图卡片
-│   │   ├── SettingsPanel.tsx      # 设置面板
-│   │   ├── ExportImport.tsx       # 导入导出
-│   │   ├── ConfirmDialog.tsx      # 确认弹窗
-│   │   └── Toast.tsx              # Toast 提示
+│   │   ├── HistoryList.tsx        # 历史、快捷粘贴与批量操作
+│   │   ├── HistoryCard.tsx        # 卡片操作，含 OCR 与保存模板
+│   │   ├── TemplatesPanel.tsx     # 常用短语与变量模板
+│   │   ├── OcrDialog.tsx          # OCR 语言选择与识别结果
+│   │   ├── QueueBar.tsx           # 顺序粘贴控制栏
+│   │   ├── SourceFilter.tsx       # 来源应用筛选
+│   │   ├── CaptureSettings.tsx    # 来源排除与采集状态
+│   │   ├── SettingsPanel.tsx      # 设置，含热键与开机自动启动
+│   │   └── ...                    # 设备、Emoji、贴图、弹窗与通用界面
 │   ├── stores/useStore.ts         # Zustand 状态
-│   ├── data/emojis.ts             # 内置 Emoji 与搜索关键词
-│   ├── types/index.ts             # 类型定义
-│   └── styles/index.css           # Tailwind + 全局样式
-├── resources/                     # 静态资源
-│   ├── icon.png                   # 应用图标 (256×256)
-│   ├── icon.ico                   # Windows 图标
-│   └── tray-icon.png              # 托盘图标 (16×16)
-├── android/                       # 开源 Android 配套应用（Kotlin）
-│   ├── app/src/main/              # 深链配对、剪贴板与通知验证码实现
-│   ├── app/src/test/              # 私网地址与验证码提取测试
-│   └── README_CN.md               # Android 构建、安装和隐私说明
+│   ├── data/emojis.ts             # 内置 Emoji 目录与搜索关键词
+│   └── styles/index.css           # Tailwind 与全局样式
+├── shared/                        # 可测试的共享查询、效率功能与粘贴逻辑
+├── resources/                     # 应用与托盘图标
+├── android/                       # 开源 Kotlin Android 配套应用
+├── scripts/build-native.mjs       # 开发、构建与打包前编译 Windows 辅助程序
 ├── electron.vite.config.ts
 ├── electron-builder.yml
-├── tailwind.config.js
 └── package.json
 ```
 
@@ -262,6 +273,7 @@ flowchart LR
   Preload <--> Main
   Main --> DB[(本地 SQLite/WASM 快照)]
   Main --> Assets[受控本地图片目录]
+  Main <--> Native[Windows 辅助程序：采集、OCR 与安全粘贴]
   Phone[iPhone 浏览器 / Android 配套应用] -->|经鉴权的局域网 HTTP| Pairing[配对与同步服务]
   Pairing --> Main
   AndroidNotifications[Android 消息类通知] --> Filter[设备端六位数字过滤]
@@ -271,7 +283,7 @@ flowchart LR
 - 渲染进程保持沙箱隔离，不能直接访问 Node.js；只有经过校验的 IPC 方法可跨越 preload 边界。
 - 剪贴板历史、图片、设置、配对密钥哈希和备份都留在用户设备上；项目不运营云端中继。
 - 手机配对限制为私有数字 IPv4、短时一次性二维码、鉴权请求和显式撤销。
-- Windows 与 Android Release 签名由维护者控制，Pull Request CI 不执行签名。
+- Android Release 签名由维护者控制，Pull Request CI 不执行签名。v1.2.2 Windows 安装包未做 Authenticode 签名。
 
 ### 隐私威胁模型
 
@@ -281,7 +293,7 @@ flowchart LR
 | 渲染进程、IPC 与本地文件 | 未可信输入、页面跳转、任意文件读取 | 上下文隔离、沙箱、CSP、禁止外部导航、窄化 preload API、IPC 输入校验、受控资源目录 | 已被攻陷的系统账户或本地进程超出应用隔离边界 |
 | 局域网配对与同步 | 暴露在公共网络、令牌重用、未授权设备、设备密钥泄露 | 私网 IPv4 校验、5 分钟一次性令牌、Windows 仅存哈希、请求鉴权、按设备控制与撤销 | 传输为 HTTP 而非端到端加密；只在可信私有 Wi-Fi 使用，绝不分享实时二维码/URL |
 | Android 验证码 | 过度收集通知、滥用短信权限、验证码重放 | 不申请短信权限、显式通知访问、消息/语义过滤、唯一六位数字提取、去重、只转发数字且不写历史 | 通知访问权限较强；仅在需要时开启，并可审查 Android 源码与构建 |
-| 备份与 Release 产物 | 路径穿越、畸形归档、签名材料泄露、二进制替换 | 归档校验与大小限制、受控解包路径、CI 测试/lint、本地签名密钥、固定产物命名 | 备份包含私人剪贴板数据且应用不加密；应安全存放和传输 |
+| 备份与 Release 产物 | 路径穿越、畸形归档、签名材料泄露、二进制替换 | 归档校验与大小限制、受控解包路径、CI 测试/lint、Android 签名密钥保存在仓库外、固定产物命名 | 备份未加密；v1.2.2 Windows 安装包未签名。请安全存放备份，并仅从本仓库下载发布产物 |
 
 安全问题请按 [SECURITY.md](SECURITY.md) 私下报告，不要公开提交 Issue。
 
