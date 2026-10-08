@@ -16,7 +16,7 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 
 ![Clipboard Manager history filters in dark mode](docs/images/history-v1.2.0-en.png)
 
-Captured from the actual Electron runtime at the default 400 × 600 window size. The current release is **v1.2.2**; the interface can switch immediately between Simplified Chinese and English from Settings.
+Captured from the actual Electron runtime at the default 400 × 600 window size. This preview reuses the historical `history-v1.2.0-en.png` image and does not show the v1.2.2 quick-paste panel. The current release is **v1.2.2**; the interface can switch immediately between Simplified Chinese and English from Settings.
 
 ---
 
@@ -114,7 +114,7 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 - Before input, check the original window/process, foreground focus and clipboard sequence, and wait for confirmation keys to be released. Switching away, cancelling or restarting clears the target. Failures preserve a usable copy when possible and ask you to check the destination, without automatically retrying or submitting forms.
 - Android is synchronized to **1.2.2 / version code 9**, with unchanged phone features. Existing history and backup formats remain compatible.
 
-See [v1.2.2 release notes](docs/releases/v1.2.2.md) for validation and compatibility limits.
+Further regression testing, packaged runtime tests and new CI test runs were skipped for v1.2.2. No Android physical-device verification is claimed. Build, package-content and signature checks do not establish runtime behavior. See [v1.2.2 release notes](docs/releases/v1.2.2.md) for completed checks and compatibility limits.
 
 ## 🆕 What's New in v1.2.1
 
