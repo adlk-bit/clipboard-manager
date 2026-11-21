@@ -118,7 +118,7 @@ export default function SettingsPanel() {
             { value: '5', label: language === 'en' ? '5 days' : t('settings.day', { count: 5 }) },
             { value: '0', label: t('settings.forever') },
           ].map((opt) => (
-            <button key={opt.value} onClick={() => handleRetentionChange(opt.value)} className={`no-drag h-7 rounded-md text-[11px] font-medium transition-colors ${retentionDays === opt.value ? 'bg-[#0078d4] text-white' : 'text-[#55555a] hover:bg-[#edf6ff] hover:text-[#006bd6] dark:text-[#d1d1d6] dark:hover:bg-white/[0.07] dark:hover:text-[#53a9ff]'}`}>
+            <button key={opt.value} onClick={() => handleRetentionChange(opt.value)} className={`no-drag h-7 rounded-md text-[11px] font-medium transition-colors ${retentionDays === opt.value ? 'bg-[#247955] text-white' : 'text-[#55555a] hover:bg-[#edf8f1] hover:text-[#176448] dark:text-[#d1d1d6] dark:hover:bg-white/[0.07] dark:hover:text-[#96dfbe]'}`}>
               {opt.label}
             </button>
           ))}
@@ -234,7 +234,7 @@ function LanguageSetting({ language, onChange, t }: { language: AppLanguage; onC
             type="button"
             aria-pressed={language === option.value}
             onClick={() => onChange(option.value)}
-            className={`h-6 rounded px-2 text-[10px] font-medium transition-colors ${language === option.value ? 'bg-white text-[#006bd6] shadow-sm dark:bg-white/10 dark:text-[#53a9ff]' : 'text-[#66666c] hover:text-[#29292d] dark:text-[#aaaab0] dark:hover:text-white'}`}
+            className={`h-6 rounded px-2 text-[10px] font-medium transition-colors ${language === option.value ? 'bg-white text-[#176448] shadow-sm dark:bg-white/10 dark:text-[#96dfbe]' : 'text-[#66666c] hover:text-[#29292d] dark:text-[#aaaab0] dark:hover:text-white'}`}
           >
             {option.label}
           </button>

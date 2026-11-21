@@ -468,11 +468,18 @@ try {
     if (process.env.RUNTIME_PRODUCTIVITY_ONLY === '1') { await verifyProductivityRestart(cdp); return }
     const restored = await cdp.evaluate('window.api.getMonitorPaused()')
     assert.equal(restored.result.value, true)
-    const restoredFeatureSettings = await cdp.evaluate(`(async () => ({
-      alwaysOnTop: await window.api.getWindowAlwaysOnTop(),
-      sensitivePreview: await window.api.getSetting('sensitive_preview'),
-    }))()`)
-    assert.deepEqual(restoredFeatureSettings.result.value, { alwaysOnTop: true, sensitivePreview: 'true' })
+    const restoredFeatureSettings = await cdp.evaluate(`(async () => {
+      // The preload is ready before Windows shows the window and applies its native topmost flag.
+      const savedPin = await window.api.getSetting('window_always_on_top')
+      const deadline = Date.now() + 2_000
+      let alwaysOnTop = await window.api.getWindowAlwaysOnTop()
+      while (!alwaysOnTop && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 25))
+        alwaysOnTop = await window.api.getWindowAlwaysOnTop()
+      }
+      return { savedPin, alwaysOnTop, sensitivePreview: await window.api.getSetting('sensitive_preview') }
+    })()`)
+    assert.deepEqual(restoredFeatureSettings.result.value, { savedPin: 'true', alwaysOnTop: true, sensitivePreview: 'true' })
     const restoredLanguage = await cdp.evaluate(`(async () => {
       const deadline = Date.now() + 5_000
       while (!document.querySelector('button[aria-label="Settings"]') && Date.now() < deadline) {

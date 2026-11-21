@@ -14,9 +14,9 @@
 
 ## 真实运行截图
 
-![Clipboard Manager 中文历史筛选界面](docs/images/history-v1.2.0-zh.png)
+![Windows 剪贴板历史页](docs/images/history-desktop-zh.png)
 
-截图来自实际 Electron 运行时，窗口为默认 400 × 600。此处沿用历史图像资源 `history-v1.2.0-zh.png`，未展示 v1.2.2 快捷粘贴面板。当前发布版本为 **v1.2.2**；可在设置中即时切换简体中文与英文。
+历史页默认窗口为 400 × 600，图中使用示例记录。拉宽窗口后，侧栏会显示功能名称。
 
 ---
 
@@ -61,10 +61,10 @@
 
 前往 [Releases](https://github.com/adlk-bit/clipboard-manager/releases) 下载：
 
-- Windows：[ClipboardManager-Setup-1.2.2.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Setup-1.2.2.exe)，双击运行安装。
+- Windows：[ClipboardManager-Setup-1.3.0.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.3.0/ClipboardManager-Setup-1.3.0.exe)，双击运行安装。
 - Android：[ClipboardManager-Android-1.2.2.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Android-1.2.2.apk)，允许浏览器或文件管理器“安装未知应用”后安装。
 
-> **签名说明：** v1.2.2 Windows 安装包未做 Authenticode 签名，Windows 可能显示 SmartScreen 提示。请仅从本仓库的官方 Release 下载。Android APK 已通过 v2 签名。
+> **签名说明：** v1.3.0 Windows 安装包未做 Authenticode 签名，Windows 可能显示 SmartScreen 提示。请仅从本仓库的官方 Release 下载。Android APK 已通过 v2 签名。
 
 ### 从源码运行
 
@@ -107,6 +107,10 @@ Android 源码、构建方式和隐私设计见 [android/README_CN.md](android/R
 
 ---
 
+## 🆕 Windows 1.3.0
+
+历史页支持紧凑和宽屏布局，改进搜索与类型筛选，离线安装包支持 NTFS 压缩。[查看发布说明](docs/releases/v1.3.0.md)
+
 ## 🆕 v1.2.2 更新内容
 
 - **快捷粘贴面板**：在目标输入框按全局热键（默认 `Ctrl+Shift+V`），搜索或点选文字历史后，按 `Enter` 或点击“粘贴选中记录”，直接粘贴回原应用。
@@ -118,7 +122,7 @@ v1.2.2 已跳过后续回归、打包后运行测试及新一轮 CI 测试；不
 
 ## 🆕 v1.2.1 更新内容
 
-v1.2.1 纳入了上一轮改进说明中的五项后续功能。该版本 Android 配套端的版本代码为 8，手机功能不变。上方下载链接指向当前 v1.2.2 版本。
+v1.2.1 纳入了上一轮改进说明中的五项后续功能。该版本 Android 配套端的版本代码为 8，手机功能不变。
 
 - **常用短语与变量模板**：侧栏新建，或从文字历史保存为模板。填写 `{{姓名}}` 等变量，预览后复制；支持当前日期、时间默认值。
 - **顺序粘贴队列**：多选文字后建立队列，切到目标应用按 `Ctrl+Shift+Alt+V` 逐条粘贴；支持暂停、跳过、退一条和目标窗口校验。
@@ -283,7 +287,7 @@ flowchart LR
 - 渲染进程保持沙箱隔离，不能直接访问 Node.js；只有经过校验的 IPC 方法可跨越 preload 边界。
 - 剪贴板历史、图片、设置、配对密钥哈希和备份都留在用户设备上；项目不运营云端中继。
 - 手机配对限制为私有数字 IPv4、短时一次性二维码、鉴权请求和显式撤销。
-- Android Release 签名由维护者控制，Pull Request CI 不执行签名。v1.2.2 Windows 安装包未做 Authenticode 签名。
+- Android Release 签名由维护者控制，Pull Request CI 不执行签名。v1.3.0 Windows 安装包未做 Authenticode 签名。
 
 ### 隐私威胁模型
 
@@ -293,7 +297,7 @@ flowchart LR
 | 渲染进程、IPC 与本地文件 | 未可信输入、页面跳转、任意文件读取 | 上下文隔离、沙箱、CSP、禁止外部导航、窄化 preload API、IPC 输入校验、受控资源目录 | 已被攻陷的系统账户或本地进程超出应用隔离边界 |
 | 局域网配对与同步 | 暴露在公共网络、令牌重用、未授权设备、设备密钥泄露 | 私网 IPv4 校验、5 分钟一次性令牌、Windows 仅存哈希、请求鉴权、按设备控制与撤销 | 传输为 HTTP 而非端到端加密；只在可信私有 Wi-Fi 使用，绝不分享实时二维码/URL |
 | Android 验证码 | 过度收集通知、滥用短信权限、验证码重放 | 不申请短信权限、显式通知访问、消息/语义过滤、唯一六位数字提取、去重、只转发数字且不写历史 | 通知访问权限较强；仅在需要时开启，并可审查 Android 源码与构建 |
-| 备份与 Release 产物 | 路径穿越、畸形归档、签名材料泄露、二进制替换 | 归档校验与大小限制、受控解包路径、CI 测试/lint、Android 签名密钥保存在仓库外、固定产物命名 | 备份未加密；v1.2.2 Windows 安装包未签名。请安全存放备份，并仅从本仓库下载发布产物 |
+| 备份与 Release 产物 | 路径穿越、畸形归档、签名材料泄露、二进制替换 | 归档校验与大小限制、受控解包路径、CI 测试/lint、Android 签名密钥保存在仓库外、固定产物命名 | 备份未加密；v1.3.0 Windows 安装包未签名。请安全存放备份，并仅从本仓库下载发布产物 |
 
 安全问题请按 [SECURITY.md](SECURITY.md) 私下报告，不要公开提交 Issue。
 

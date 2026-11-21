@@ -29,10 +29,11 @@ export default function App() {
   const historyItems = useStore((s) => s.historyItems)
   const selectionMode = useStore((s) => s.selectionMode)
   const historyLoading = useStore((s) => s.historyLoading)
-  const keyboardActiveId = useStore((s) => s.keyboardActiveId)
   const setKeyboardActiveId = useStore((s) => s.setKeyboardActiveId)
   const loadMonitorPaused = useStore((s) => s.loadMonitorPaused)
   const setMonitorPaused = useStore((s) => s.setMonitorPaused)
+  const monitorPaused = useStore((s) => s.monitorPaused)
+  const toggleMonitorPaused = useStore((s) => s.toggleMonitorPaused)
 
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'info' } | null>(null)
   const [toastKey, setToastKey] = useState(0)
@@ -122,6 +123,7 @@ export default function App() {
       if (event.isComposing || event.defaultPrevented || editCopyItems || confirmDeleteId !== null || confirmClearAll || confirmBatchDelete || document.querySelector('[role="dialog"]')) return
       if (currentPage !== 'all' && currentPage !== 'favorites') return
       const state = useStore.getState()
+      const { keyboardActiveId } = state
       if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'f' && (!isTyping || isSearch)) {
         event.preventDefault()
         const input = document.getElementById('history-search') as HTMLInputElement | null
@@ -196,24 +198,33 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('blur', clearKeyboardSelection)
     }
-  }, [currentPage, historyItems, keyboardActiveId, selectionMode, historyLoading, setKeyboardActiveId, editCopyItems, confirmDeleteId, confirmClearAll, confirmBatchDelete, openEditor, showToast, t, quick, pasteItem])
+  }, [currentPage, historyItems, selectionMode, historyLoading, setKeyboardActiveId, editCopyItems, confirmDeleteId, confirmClearAll, confirmBatchDelete, openEditor, showToast, t, quick, pasteItem])
 
   return (
     <Layout>
       <Sidebar />
 
-      <div className="flex min-w-0 flex-1 flex-col bg-[#f7f7f8] dark:bg-[#1c1c1e]">
-        {/* Header */}
-        <div className="app-header drag-region flex h-11 shrink-0 items-center justify-between gap-2 border-b border-[#e2e2e6] bg-white px-3 dark:border-white/10 dark:bg-[#242427]">
-          <h1 className="no-drag truncate text-sm font-semibold text-[#242428] dark:text-[#f5f5f7]">
-            {t(`page.${currentPage}`)}
-          </h1>
-          {(currentPage === 'all' || currentPage === 'favorites') && (
-            <div className="no-drag">
-              <SearchBar />
+      <div className="app-workspace flex min-w-0 flex-1 flex-col">
+        <header className="app-header drag-region">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-baseline gap-2">
+              <h1 className="truncate">{t(`page.${currentPage}`)}</h1>
+              {(currentPage === 'all' || currentPage === 'favorites') && !historyLoading && historyItems.length > 0 && (
+                <span className="result-count">{t('history.count', { count: historyItems.length })}</span>
+              )}
             </div>
-          )}
-        </div>
+            {currentPage === 'all' && !selectionMode && (
+              <button type="button" className="capture-control no-drag" aria-pressed={monitorPaused}
+                aria-label={monitorPaused ? t('history.resumeAuto') : t('history.pauseAuto')}
+                title={monitorPaused ? t('history.resumeAuto') : t('history.pauseAuto')}
+                onClick={toggleMonitorPaused}>
+                <span aria-hidden="true" />
+                {monitorPaused ? t('history.resume') : t('history.recording')}
+              </button>
+            )}
+          </div>
+          {(currentPage === 'all' || currentPage === 'favorites') && <SearchBar />}
+        </header>
 
         <QueueBar />
         {(quick?.active || quick?.busy || quickNotice) && <section aria-label={language === 'en' ? 'Quick paste' : '快捷粘贴'} className="no-drag shrink-0 space-y-1 border-b border-primary-200 bg-primary-50 p-2 text-xs dark:border-primary-900 dark:bg-primary-900/20 dark:text-gray-100">
@@ -221,7 +232,7 @@ export default function App() {
             <p className="truncate font-medium">{language === 'en' ? 'Paste to: ' : '粘贴到：'}{quick.target || (language === 'en' ? 'Copy only (target unavailable)' : '仅复制（目标不可用）')}</p>
             <p className="text-[10px]">{language === 'en' ? 'Enter: paste · Ctrl+Enter: copy only · Esc: cancel' : 'Enter 粘贴 · Ctrl+Enter 仅复制 · Esc 取消'}</p>
             <div className="flex gap-2">
-              <button type="button" disabled={quick.busy || historyLoading || !historyItems.length} className="rounded bg-primary-500 px-2 py-1 text-white disabled:opacity-40" onClick={() => void pasteItem(historyItems.find((item) => item.id === keyboardActiveId) || historyItems[0])}>{quick.busy ? (language === 'en' ? 'Pasting…' : '正在粘贴…') : (language === 'en' ? 'Paste selected' : '粘贴选中记录')}</button>
+              <button type="button" disabled={quick.busy || historyLoading || !historyItems.length} className="rounded bg-primary-500 px-2 py-1 text-white disabled:opacity-40" onClick={() => void pasteItem(historyItems.find((item) => item.id === useStore.getState().keyboardActiveId) || historyItems[0])}>{quick.busy ? (language === 'en' ? 'Pasting…' : '正在粘贴…') : (language === 'en' ? 'Paste selected' : '粘贴选中记录')}</button>
               <button type="button" disabled={quick.busy} onClick={() => void window.api.hideWindow()}>{language === 'en' ? 'Cancel' : '取消'}</button>
             </div>
           </>}

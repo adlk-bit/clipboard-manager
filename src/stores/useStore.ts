@@ -93,8 +93,6 @@ export const useStore = create<AppState>((set, get) => ({
       sourceApp: '', contentType: 'all', historyItems: [], historyLoading: false, historyError: false, _searchTimer: null, _historyRequest: get()._historyRequest + 1 })
     if (page === 'stickers') {
       get().loadStickers()
-    } else if (page === 'settings') {
-      get().loadSettings()
     } else if (page === 'all' || page === 'favorites') {
       if (page !== 'favorites') set({ favoriteFolder: '' })
       get().loadHistory('', page === 'favorites' ? 'favorites' : 'all')
@@ -111,12 +109,14 @@ export const useStore = create<AppState>((set, get) => ({
   setSourceApp: (sourceApp) => { set({ sourceApp, keyboardActiveId: null, selectedIds: new Set() }); void get().loadHistory() },
   contentType: 'all',
   setContentType: (type) => {
+    if (type === get().contentType) return
     set({ contentType: type, keyboardActiveId: null, selectedIds: new Set() })
     void get().loadHistory()
   },
   setHistoryItems: (items) => set({ historyItems: items }),
   historySort: 'recent',
   setHistorySort: (sort) => {
+    if (sort === get().historySort) return
     set({ historySort: sort })
     get().loadHistory(get().searchQuery, 'all')
   },
@@ -125,6 +125,7 @@ export const useStore = create<AppState>((set, get) => ({
   favoriteFolder: '',
   favoriteFolders: [],
   setFavoriteFolder: (folder) => {
+    if (folder === get().favoriteFolder) return
     set({ favoriteFolder: folder })
     get().loadHistory(get().searchQuery, 'favorites')
   },
@@ -270,7 +271,7 @@ export const useStore = create<AppState>((set, get) => ({
         maxHistoryItems: maxHistoryItems || '500',
         maxImageSizeMb: maxImageSizeMb || '10'
       })
-      await get().loadHistoryStats()
+      if (get().currentPage === 'settings') await get().loadHistoryStats()
     } catch (e) {
       console.error('Failed to load settings:', e)
     }

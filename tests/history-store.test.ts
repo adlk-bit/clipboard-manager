@@ -82,3 +82,26 @@ test('leaving history prevents later responses from updating the new page', asyn
   assert.equal(useStore.getState().historyItems.length, 0)
   assert.equal(useStore.getState().historyLoading, false)
 })
+
+test('reselecting active filters does not request the same history again', () => {
+  const state = useStore.getState()
+  state.setContentType('all')
+  state.setHistorySort('recent')
+  state.setFavoriteFolder('')
+  assert.equal(pending.length, 0)
+})
+
+test('settings scan image storage only while the settings page is open', async () => {
+  let scans = 0
+  Object.assign(window.api, {
+    getSetting: async () => null,
+    getAutoLaunch: async () => ({ supported: true, enabled: false }),
+    getHistoryStats: async () => { scans++; return { itemCount: 3, imageBytes: 100 } },
+  })
+  await useStore.getState().loadSettings()
+  assert.equal(scans, 0)
+  useStore.setState({ currentPage: 'settings' })
+  await useStore.getState().loadSettings()
+  assert.equal(scans, 1)
+  assert.equal(useStore.getState().historyStats.imageBytes, 100)
+})

@@ -28,6 +28,7 @@ export default function ConfirmDialog({ type }: ConfirmDialogProps) {
     } else if (type === 'batchDelete') {
       await batchDelete()
       setConfirmBatchDelete(false)
+      return
     }
     const filter = currentPage === 'favorites' ? 'favorites' : 'all'
     await loadHistory(searchQuery, filter)

@@ -2,6 +2,7 @@ appId: com.clipboard.manager
 productName: ClipboardManager
 artifactName: ${productName}-Setup-${version}.${ext}
 compression: maximum
+afterPack: scripts/compact-windows-package.cjs
 directories:
   buildResources: resources
   output: dist
@@ -28,6 +29,9 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
+  # All releases use the offline installer; there is no differential updater.
+  differentialPackage: false
+  include: resources/installer.nsh
 extraResources:
   - from: native/bin/ClipboardBridge.exe
     to: native/ClipboardBridge.exe

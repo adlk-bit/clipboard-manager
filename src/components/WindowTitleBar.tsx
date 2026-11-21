@@ -44,13 +44,11 @@ export default function WindowTitleBar() {
 
   return (
     <header
-      className="window-titlebar drag-region flex h-8 shrink-0 items-center justify-between border-b border-[#dedee3] bg-[#f8f8f9] pl-2.5 dark:border-white/10 dark:bg-[#2a2a2d]"
+      className="window-titlebar drag-region flex h-8 shrink-0 items-center justify-between border-b pl-2.5"
       onDoubleClick={toggleMaximize}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <div className="flex size-4 shrink-0 items-center justify-center rounded bg-[#0078d4] text-[9px] font-semibold text-white">
-          C
-        </div>
+        <div className="app-mark"><Icon name="copy" size={13} strokeWidth={2.2} /></div>
         <span className="truncate text-[11px] font-medium text-[#48484d] dark:text-[#d1d1d6]">
           {t('app.name')}
         </span>

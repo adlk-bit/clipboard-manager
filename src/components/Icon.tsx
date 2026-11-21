@@ -22,6 +22,7 @@ export type IconName =
   | 'settings'
   | 'smile'
   | 'star'
+  | 'text'
   | 'tag'
   | 'trash'
   | 'upload'
@@ -81,6 +82,8 @@ export default function Icon({ name, size = 16, ...props }: IconProps) {
         return <><circle cx="12" cy="12" r="9" /><path d="M8.5 10h.01M15.5 10h.01M8 14.5c1 1.15 2.33 1.75 4 1.75s3-.6 4-1.75" /></>
       case 'star':
         return <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z" />
+      case 'text':
+        return <path d="M4 6h16M4 12h16M4 18h10" />
       case 'tag':
         return <><path d="M4 4h6l10 10-6 6L4 10Z" /><circle cx="8" cy="8" r="1" /></>
       case 'trash':

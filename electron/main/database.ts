@@ -340,7 +340,7 @@ export function getHistoryStats(): HistoryStats {
   let imageBytes = 0
   while (stmt.step()) {
     const imagePath = stmt.getAsObject().image_path as string
-    try { if (imagePath && fs.existsSync(imagePath)) imageBytes += fs.statSync(imagePath).size } catch { /* skip unreadable file */ }
+    try { if (imagePath) imageBytes += fs.statSync(imagePath).size } catch { /* skip unreadable file */ }
   }
   stmt.free()
   return { itemCount, imageBytes }
@@ -371,8 +371,13 @@ export function getHistoryList(
   if (!db) return []
   try {
     let query = 'SELECT * FROM clipboard_history WHERE 1=1'
-    const params: any[] = []
+    const params: string[] = []
 
+    // Exclude other storage types before sorting or converting sql.js rows.
+    if (contentType !== 'all') {
+      query += ' AND type = ?'
+      params.push(contentType === 'image' ? 'image' : 'text')
+    }
     if (filter === 'favorites') {
       query += ' AND is_favorite = 1'
       if (folder) {

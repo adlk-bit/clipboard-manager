@@ -14,9 +14,9 @@ A lightweight, efficient Windows desktop clipboard manager. Runs silently in the
 
 ## Runtime Preview
 
-![Clipboard Manager history filters in dark mode](docs/images/history-v1.2.0-en.png)
+![Clipboard Manager Windows history](docs/images/history-desktop-en.png)
 
-Captured from the actual Electron runtime at the default 400 × 600 window size. This preview reuses the historical `history-v1.2.0-en.png` image and does not show the v1.2.2 quick-paste panel. The current release is **v1.2.2**; the interface can switch immediately between Simplified Chinese and English from Settings.
+The history view at its default 400 × 600 window size, using sample records. Widen the window to see labels in the sidebar.
 
 ---
 
@@ -61,10 +61,10 @@ Captured from the actual Electron runtime at the default 400 × 600 window size.
 
 Go to [Releases](https://github.com/adlk-bit/clipboard-manager/releases) and download:
 
-- Windows: [ClipboardManager-Setup-1.2.2.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Setup-1.2.2.exe); run it to install.
+- Windows: [ClipboardManager-Setup-1.3.0.exe](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.3.0/ClipboardManager-Setup-1.3.0.exe); run it to install.
 - Android: [ClipboardManager-Android-1.2.2.apk](https://github.com/adlk-bit/clipboard-manager/releases/download/v1.2.2/ClipboardManager-Android-1.2.2.apk); allow your browser or file manager to install unknown apps, then install it.
 
-> **Signing note:** The v1.2.2 Windows installer is not Authenticode-signed, so Windows may show a SmartScreen warning. Download it only from this repository's official Release. The Android APK is v2-signed.
+> **Signing note:** The v1.3.0 Windows installer is not Authenticode-signed, so Windows may show a SmartScreen warning. Download it only from this repository's official Release. The Android APK is v2-signed.
 
 ### Build from Source
 
@@ -107,6 +107,10 @@ See [android/README.md](android/README.md) for Android source, build, install, a
 
 ---
 
+## 🆕 Windows 1.3.0
+
+The history panel adapts to compact and wide windows, filters records more efficiently, and ships in an offline installer with NTFS compression. [Release notes](docs/releases/v1.3.0.md)
+
 ## 🆕 What's New in v1.2.2
 
 - **Quick paste panel:** press the global shortcut (default `Ctrl+Shift+V`) from a destination input, search or select a text record, then press `Enter` or click **Paste selected** to paste back into the original app.
@@ -118,7 +122,7 @@ Further regression testing, packaged runtime tests and new CI test runs were ski
 
 ## 🆕 What's New in v1.2.1
 
-v1.2.1 introduced all five follow-up features from the improvement notes. Its Android companion used version code 8; phone features were unchanged. The download links above always point to the current v1.2.2 release.
+v1.2.1 introduced all five follow-up features from the improvement notes. Its Android companion used version code 8; phone features were unchanged.
 
 - **Phrases and variable templates:** create from the sidebar or save a text history item; fill `{{name}}` variables and preview before copying, with current date/time defaults.
 - **Sequential paste queue:** select text records, focus the destination and press `Ctrl+Shift+Alt+V` for each item. Pause, skip, rewind and target-window checks are included.
@@ -283,7 +287,7 @@ flowchart LR
 - The renderer is sandboxed and cannot access Node.js directly; validated IPC methods cross the preload boundary.
 - Clipboard history, images, settings, pairing hashes, and backups remain on the user's devices. The project does not operate a cloud relay.
 - Phone pairing is intentionally limited to private numeric IPv4 addresses, short-lived single-use QR tokens, authenticated requests, and explicit revocation.
-- Android release signing is maintainer-controlled and is not performed by pull-request CI. The v1.2.2 Windows installer is not Authenticode-signed.
+- Android release signing is maintainer-controlled and is not performed by pull-request CI. The v1.3.0 Windows installer is not Authenticode-signed.
 
 ### Privacy Threat Model
 
@@ -293,7 +297,7 @@ flowchart LR
 | Renderer, IPC, and local files | Untrusted renderer input, navigation, arbitrary file access | Context isolation, sandbox, CSP, denied navigation, narrow preload API, validated IPC input, managed asset directories | A compromised OS account or local process is outside the application's isolation boundary |
 | LAN pairing and sync | Public-network exposure, token reuse, unauthorized device, leaked device secret | Private IPv4 validation, five-minute single-use tokens, hashed secrets on Windows, authenticated requests, per-device controls and revocation | Transport is HTTP, not end-to-end encrypted; use trusted private Wi-Fi only and never share a live QR/URL |
 | Android verification codes | Excessive notification collection, SMS permission abuse, replay | No SMS permissions, explicit notification access, message/context checks, unique six-digit extraction, deduplication, code-only relay, no history retention | Notification access is powerful; enable it only when needed and review the Android source/build |
-| Backups and release artifacts | Path traversal, malformed archive, leaked signing material, substituted binary | Archive validation and size limits, managed extraction paths, CI tests/lint, Android signing keys kept outside the repository, published artifact names | Backups are not encrypted; the v1.2.2 Windows installer is unsigned. Store backups securely and download releases only from this repository |
+| Backups and release artifacts | Path traversal, malformed archive, leaked signing material, substituted binary | Archive validation and size limits, managed extraction paths, CI tests/lint, Android signing keys kept outside the repository, published artifact names | Backups are not encrypted; the v1.3.0 Windows installer is unsigned. Store backups securely and download releases only from this repository |
 
 Security reports should use the private process in [SECURITY.md](SECURITY.md), not a public Issue.
 

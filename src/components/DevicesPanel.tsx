@@ -93,7 +93,7 @@ export default function DevicesPanel() {
     <div className="space-y-3 p-3">
       <section className="rounded-xl border border-[#dfe4ea] bg-white p-3 dark:border-white/[0.08] dark:bg-[#28282b]">
         <div className="flex items-start gap-2.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf4ff] text-[#0078d4] dark:bg-[#0a84ff]/15 dark:text-[#53a9ff]">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#edf8f1] text-[#247955] dark:bg-[#59b78a]/15 dark:text-[#96dfbe]">
             <Icon name="devices" size={20} />
           </div>
           <div className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ export default function DevicesPanel() {
               id="network-address"
               value={selectedAddress}
               onChange={(event) => { setSelectedAddress(event.target.value); setPairing(null) }}
-              className="no-drag h-8 w-full rounded-lg border border-[#d8d8dd] bg-[#fafafa] px-2 text-[11px] text-[#3a3a3f] outline-none focus:border-[#0a84ff] dark:border-white/10 dark:bg-[#1f1f22] dark:text-[#e5e5ea]"
+              className="no-drag h-8 w-full rounded-lg border border-[#d8d8dd] bg-[#fafafa] px-2 text-[11px] text-[#3a3a3f] outline-none focus:border-[#59b78a] dark:border-white/10 dark:bg-[#1f1f22] dark:text-[#e5e5ea]"
             >
               {status.addresses.map((item) => <option key={`${item.name}-${item.address}`} value={item.address}>{item.name} · {item.address}</option>)}
             </select>
@@ -127,7 +127,7 @@ export default function DevicesPanel() {
             type="button"
             onClick={createPairing}
             disabled={busy || !status.running || !selectedAddress}
-            className="no-drag mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#0078d4] text-xs font-semibold text-white transition-colors hover:bg-[#006cbe] disabled:cursor-not-allowed disabled:opacity-45"
+            className="no-drag mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#247955] text-xs font-semibold text-white transition-colors hover:bg-[#176448] disabled:cursor-not-allowed disabled:opacity-45"
           >
             <Icon name="plus" size={14} />
             {busy ? t('devices.generating') : pairingExpired ? t('devices.regenerate') : t('devices.generate')}
@@ -139,7 +139,7 @@ export default function DevicesPanel() {
             </div>
             <p className="mt-2 text-[11px] font-medium text-[#3f3f44] dark:text-[#dedee3]">{t('devices.scan')}</p>
             <p className="mt-0.5 text-[10px] text-[#8a8a90]">{selectedNetwork?.name || t('devices.lan')} · {pairing.address}:{pairing.port} · {t('devices.expires', { count: remainingSeconds })}</p>
-            <button type="button" onClick={copyPairingUrl} className="no-drag mt-2 text-[10px] font-medium text-[#0078d4] hover:underline dark:text-[#53a9ff]">{t('devices.copyAddress')}</button>
+            <button type="button" onClick={copyPairingUrl} className="no-drag mt-2 text-[10px] font-medium text-[#247955] hover:underline dark:text-[#96dfbe]">{t('devices.copyAddress')}</button>
           </div>
         )}
 

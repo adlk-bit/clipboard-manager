@@ -44,12 +44,11 @@ export default function HistoryList({ onCopy, onEdit, onMerge, onTemplate, onOcr
   const historySort = useStore((s) => s.historySort)
   const setHistorySort = useStore((s) => s.setHistorySort)
   const monitorPaused = useStore((s) => s.monitorPaused)
-  const toggleMonitorPaused = useStore((s) => s.toggleMonitorPaused)
 
   const allSelected = historyItems.length > 0 && selectedIds.size === historyItems.length
   const pinnedFavorites = currentPage === 'favorites' ? historyItems.filter((item) => item.is_pinned) : []
   const regularItems = currentPage === 'favorites' ? historyItems.filter((item) => !item.is_pinned) : historyItems
-  const selectedItems = historyItems.filter((item) => selectedIds.has(item.id))
+  const selectedItems = selectionMode ? historyItems.filter((item) => selectedIds.has(item.id)) : []
   const canMerge = selectedItems.length >= 2 && selectedItems.every((item) => item.type === 'text' && item.content !== null)
 
   const handleToggleSelectionMode = () => {
@@ -73,7 +72,7 @@ export default function HistoryList({ onCopy, onEdit, onMerge, onTemplate, onOcr
     <div className="flex flex-col h-full">
       {/* Batch action bar */}
       {selectionMode && (
-        <div className="no-drag flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#bedcff] bg-[#edf6ff] px-3 py-2 dark:border-[#0a84ff]/25 dark:bg-[#0a84ff]/10">
+        <div className="no-drag flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-primary-200 bg-primary-50 px-3 py-2 dark:border-primary-900 dark:bg-primary-900/30">
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" disabled={queueBusy || historyLoading || !selectedItems.length || selectedItems.length > 100 || selectedItems.some((item) => item.type !== 'text')} className="rounded bg-primary-500 px-2 py-1 text-xs text-white disabled:opacity-40" onClick={async () => {
               setQueueBusy(true); setQueueError('')
@@ -122,47 +121,30 @@ export default function HistoryList({ onCopy, onEdit, onMerge, onTemplate, onOcr
         </div>
       )}
 
-      {currentPage === 'all' && !selectionMode && (
-        <div className="no-drag flex h-10 shrink-0 items-center justify-between gap-2 border-b border-[#e6e6e9] px-3 dark:border-white/[0.07]">
-          <div className="flex rounded-md bg-[#e9e9ec] p-0.5 dark:bg-white/[0.08]">
-            <button
-              onClick={() => setHistorySort('recent')}
-              className={`rounded px-2.5 py-1 text-[10px] font-medium transition-colors ${historySort === 'recent' ? 'bg-white text-[#006bd6] shadow-sm dark:bg-white/10 dark:text-[#53a9ff]' : 'text-[#6b6b70] hover:text-[#29292d] dark:text-[#a6a6ab] dark:hover:text-white'}`}
-            >
-              {t('history.recent')}
-            </button>
-            <button
-              onClick={() => setHistorySort('frequent')}
-              className={`rounded px-2.5 py-1 text-[10px] font-medium transition-colors ${historySort === 'frequent' ? 'bg-white text-[#006bd6] shadow-sm dark:bg-white/10 dark:text-[#53a9ff]' : 'text-[#6b6b70] hover:text-[#29292d] dark:text-[#a6a6ab] dark:hover:text-white'}`}
-            >
-              {t('history.frequent')}
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={toggleMonitorPaused}
-            aria-pressed={monitorPaused}
-            title={monitorPaused ? t('history.resumeAuto') : t('history.pauseAuto')}
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${monitorPaused ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/20 dark:text-amber-300' : 'text-[#626267] hover:bg-black/[0.05] dark:text-[#aaaab0] dark:hover:bg-white/[0.08]'}`}
-          >
-            <Icon name={monitorPaused ? 'play' : 'pause'} size={12} />
-            {monitorPaused ? t('history.resume') : t('history.pause')}
-          </button>
-        </div>
-      )}
-
       {!selectionMode && (
-        <div className="no-drag flex shrink-0 items-center justify-between gap-1 border-b border-[#e6e6e9] px-2.5 py-1.5 dark:border-white/[0.07]">
-          <div className="flex gap-0.5" role="group" aria-label={t('history.types')}>
-            {(['all', 'text', 'url', 'image'] as HistoryContentType[]).map((type) => (
-              <button key={type} type="button" aria-pressed={contentType === type} onClick={() => setContentType(type)} className={`rounded px-2 py-1 text-[11px] ${contentType === type ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300' : 'text-gray-500 hover:bg-black/[0.04] dark:text-gray-400 dark:hover:bg-white/[0.06]'}`}>{t(`history.type.${type}`)}</button>
-            ))}
+        <div className="history-filters no-drag">
+          <div className="filter-row">
+            <div className="type-tabs" role="group" aria-label={t('history.types')}>
+              {(['all', 'text', 'url', 'image'] as HistoryContentType[]).map((type) => (
+                <button key={type} type="button" aria-pressed={contentType === type} onClick={() => setContentType(type)}>
+                  {t(`history.type.${type}`)}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="manage-button" onClick={handleToggleSelectionMode} disabled={historyItems.length === 0 || historyLoading}>{t('history.batchManage')}</button>
           </div>
-          <button type="button" onClick={handleToggleSelectionMode} disabled={historyItems.length === 0 || historyLoading} className="rounded px-1.5 py-1 text-[11px] text-primary-500 disabled:opacity-40 dark:text-primary-400">{t('history.batchManage')}</button>
+          <div className="filter-row filter-secondary">
+            {currentPage === 'all' && (
+              <div className="sort-options" role="group" aria-label={q('排列顺序', 'Sort order')}>
+                {(['recent', 'frequent'] as const).map(sort => (
+                  <button key={sort} type="button" aria-pressed={historySort === sort} onClick={() => setHistorySort(sort)}>{t(`history.${sort}`)}</button>
+                ))}
+              </div>
+            )}
+            <SourceFilter />
+          </div>
         </div>
       )}
-
-      {!selectionMode && <SourceFilter />}
       {queueError && <p role="alert" className="p-2 text-xs text-red-500">{queueError}</p>}
       {/* Card list */}
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5" aria-busy={historyLoading}>
@@ -216,7 +198,7 @@ export default function HistoryList({ onCopy, onEdit, onMerge, onTemplate, onOcr
           </div>
         )}
       </div>
-      {!selectionMode && <div className="shrink-0 border-t border-[#e6e6e9] px-2 py-1 text-center text-[10px] text-gray-500 dark:border-white/[0.07] dark:text-gray-400" title={t('history.keyboardMore')}>{quickPasteActive ? q('↑↓ 选择 · Enter 粘贴 · Ctrl+Enter 仅复制', '↑↓ Select · Enter Paste · Ctrl+Enter Copy only') : t('history.keyboard')}</div>}
+      {!selectionMode && <div className="history-keys" title={t('history.keyboardMore')}>{quickPasteActive ? q('↑↓ 选择 · Enter 粘贴 · Ctrl+Enter 仅复制', '↑↓ Select · Enter Paste · Ctrl+Enter Copy only') : t('history.keyboard')}</div>}
     </div>
   )
 }

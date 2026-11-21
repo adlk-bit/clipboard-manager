@@ -26,7 +26,6 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
   const [tags, setTags] = useState(item.favorite_tags || '')
   const cardRef = useRef<HTMLDivElement>(null)
   const loadHistory = useStore((s) => s.loadHistory)
-  const searchQuery = useStore((s) => s.searchQuery)
   const currentPage = useStore((s) => s.currentPage)
   const setConfirmDeleteId = useStore((s) => s.setConfirmDeleteId)
   const selectionMode = useStore((s) => s.selectionMode)
@@ -36,7 +35,6 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
   const isKeyboardActive = useStore((s) => s.keyboardActiveId === item.id)
   const sensitivePreviewEnabled = useStore((s) => s.sensitivePreview)
 
-  const filter = currentPage === 'favorites' ? 'favorites' : 'all'
   const timeStr = formatTime(item.created_at, language)
   const imageUrl = item.image_path
     ? `local-asset://file/${encodeURIComponent(item.image_path)}`
@@ -77,7 +75,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
   const handleTogglePin = async (e: React.MouseEvent) => {
     e.stopPropagation()
     await window.api.togglePin(item.id)
-    await loadHistory(searchQuery, filter)
+    await loadHistory()
   }
 
   const handleOpenUrl = async (e: React.MouseEvent) => {
@@ -94,11 +92,11 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
   const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
     await window.api.toggleFavorite(item.id)
-    await loadHistory(searchQuery, filter)
+    await loadHistory()
   }
 
   const refreshFavorites = async () => {
-    await loadHistory(searchQuery, filter)
+    await loadHistory()
     if (currentPage === 'favorites') await useStore.getState().loadFavoriteFolders()
   }
 
@@ -133,15 +131,9 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
     <div ref={cardRef} className="history-card" data-history-id={item.id} data-keyboard-active={isKeyboardActive}>
       <div
         onClick={handleClick}
-        className={`no-drag group relative rounded-lg border px-2.5 py-2 transition-colors duration-100 ${
-          isSelected
-            ? 'border-[#1683d8] bg-[#edf6ff] ring-1 ring-[#1683d8]/20 dark:bg-[#0a84ff]/[0.12] dark:ring-[#0a84ff]/25'
-            : isKeyboardActive
-            ? 'border-[#1683d8] bg-[#edf6ff] ring-1 ring-[#1683d8]/20 dark:bg-[#0a84ff]/[0.12] dark:ring-[#0a84ff]/25'
-            : item.is_pinned
-            ? 'border-[#bad9f4] bg-[#f5faff] dark:border-[#0a84ff]/30 dark:bg-[#28282b]'
-            : 'border-[#e2e2e6] bg-white hover:border-[#b9d8f3] dark:border-white/[0.08] dark:bg-[#28282b] dark:hover:border-white/[0.16]'
-        } ${selectionMode ? 'cursor-pointer' : ''}`}
+        className={`clip-surface no-drag group relative ${selectionMode ? 'cursor-pointer' : ''}`}
+        data-selected={isSelected || isKeyboardActive}
+        data-pinned={Boolean(item.is_pinned)}
       >
         {/* Selection checkbox */}
         {selectionMode && (
@@ -165,27 +157,22 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
           </div>
         )}
 
-        {/* Content area */}
-        <div className={`min-w-0 ${item.type === 'text' && item.content ? (sensitivePreviewEnabled && sensitivePreview.isSensitive ? 'pr-24' : 'pr-16') : 'pr-7'} ${selectionMode ? 'ml-6' : ''}`}>
+        <div className={`clip-meta ${selectionMode ? 'ml-6' : ''}`}>
+          <span className="clip-kind" data-kind={openableUrl ? 'url' : item.type}>
+            <Icon name={openableUrl ? 'link' : item.type === 'image' ? 'image' : 'text'} size={12} />
+            {openableUrl ? t('card.link') : t(`card.${item.type}`)}
+          </span>
+          <span className="clip-time">{timeStr}</span>
+          {Boolean(item.is_pinned) && <Icon name="pin" size={11} aria-label={t('card.pinned')} aria-hidden={false} />}
+        </div>
+        <div className="min-w-0">
           {item.type === 'text' ? (
-            <p className="line-clamp-2 select-text whitespace-pre-wrap break-words text-[13px] leading-[18px] text-[#3a3a3c] dark:text-[#e5e5ea]">
+            <p className="line-clamp-2 select-text whitespace-pre-wrap break-words clip-text">
               {displayedContent}
             </p>
           ) : item.image_path ? (
-            <div className="flex items-center gap-2.5">
-              <div className="size-11 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-100 dark:border-gray-600 dark:bg-gray-700">
-                <img
-                  src={imageUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  draggable={false}
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <div>
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700 dark:text-gray-400">{t('card.image')}</span>
-              </div>
+            <div className="size-11 overflow-hidden rounded-md border border-gray-200 bg-gray-100 dark:border-gray-600 dark:bg-gray-700">
+              <img src={imageUrl} alt={t('card.image')} className="size-full object-cover" draggable={false} loading="lazy" decoding="async" />
             </div>
           ) : (
             <p className="text-xs text-gray-400 dark:text-gray-500">{t('card.missingImage')}</p>
@@ -238,7 +225,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
 
         {/* Primary actions - always visible (hidden in selection mode) */}
         {!selectionMode && (
-          <div className="absolute right-2 top-2 flex items-center gap-1">
+          <div className="absolute right-2 top-1.5 flex items-center gap-0.5">
             {item.type === 'text' && item.content && sensitivePreviewEnabled && sensitivePreview.isSensitive && (
               <button
                 type="button"
@@ -246,7 +233,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
                 aria-label={revealed ? t('card.hideSensitive') : t('card.revealSensitive')}
                 aria-pressed={revealed}
                 title={revealed ? t('card.hideSensitive') : t('card.revealSensitive')}
-                className={`flex size-7 items-center justify-center rounded-md transition-colors duration-100 ${revealed ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-[#f1f1f3] text-[#77777d] hover:bg-[#e4f1fc] hover:text-[#006bd6] dark:bg-white/[0.07] dark:text-[#aaaab0] dark:hover:bg-[#0a84ff]/20 dark:hover:text-[#53a9ff]'}`}
+                className="card-tool"
               >
                 <Icon name={revealed ? 'eye-off' : 'eye'} size={14} />
               </button>
@@ -257,7 +244,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
                 onClick={(event) => { event.stopPropagation(); onEdit(item) }}
                 aria-label={t('card.editCopy')}
                 title={t('card.editCopy')}
-                className="flex size-7 items-center justify-center rounded-md bg-[#f1f1f3] text-[#77777d] transition-colors duration-100 hover:bg-[#e4f1fc] hover:text-[#006bd6] dark:bg-white/[0.07] dark:text-[#aaaab0] dark:hover:bg-[#0a84ff]/20 dark:hover:text-[#53a9ff]"
+                className="card-tool"
               >
                 <Icon name="edit" size={14} />
               </button>
@@ -266,11 +253,7 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
               type="button"
               onClick={handleCopy}
               aria-label={t('card.copyClipboard')}
-              className={`flex size-7 items-center justify-center rounded-md transition-colors duration-100 ${
-                copied
-                  ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                  : 'bg-[#f1f1f3] text-[#77777d] hover:bg-[#e4f1fc] hover:text-[#006bd6] dark:bg-white/[0.07] dark:text-[#aaaab0] dark:hover:bg-[#0a84ff]/20 dark:hover:text-[#53a9ff]'
-              }`}
+              className="card-tool card-copy"
               title={t('card.copyClipboard')}
             >
               <Icon name={copied ? 'check' : 'copy'} size={14} strokeWidth={copied ? 2.5 : 1.8} />
@@ -279,17 +262,10 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
         )}
 
         {/* Meta bar */}
-        <div className="mt-1.5 flex min-h-6 items-center justify-between gap-2">
+        <div className="clip-footer">
           <div className="flex min-w-0 items-center gap-1.5">
-            {item.is_pinned === 1 && !selectionMode && (
-              <span className="flex items-center gap-0.5 text-[10px] text-primary-500 dark:text-primary-400">
-                <Icon name="pin" size={11} />
-                {t('card.pinned')}
-              </span>
-            )}
-            {!selectionMode && <button type="button" className="shrink-0 rounded px-1 py-0.5 text-[10px] text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20" onClick={(event) => { event.stopPropagation(); if (item.type === 'image') onOcr(item); else onTemplate(item) }}>{item.type === 'image' ? 'OCR' : language === 'en' ? 'Template' : '存为模板'}</button>}
+            {!selectionMode && <button type="button" className="shrink-0 rounded px-1 py-0.5 text-[10px] text-primary-600 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-900/20" onClick={(event) => { event.stopPropagation(); if (item.type === 'image') onOcr(item); else onTemplate(item) }}>{item.type === 'image' ? 'OCR' : language === 'en' ? 'Template' : '存为模板'}</button>}
             {item.source_app && <span title={item.source_app} className="max-w-[75px] truncate text-[9px] text-gray-400">{item.source_app}</span>}
-            <span className="shrink-0 text-[10px] tracking-[0.01em] text-[#8e8e93] dark:text-[#98989d]">{timeStr}</span>
           </div>
 
           {!selectionMode && (
@@ -345,7 +321,6 @@ const HistoryCard = memo(function HistoryCard({ item, onCopy, onEdit, onTemplate
             </div>
           )}
         </div>
-
       </div>
     </div>
   )

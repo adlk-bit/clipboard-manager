@@ -19,24 +19,21 @@ export default function Sidebar() {
   const setCurrentPage = useStore((s) => s.setCurrentPage)
 
   return (
-    <aside className="app-sidebar flex w-[52px] shrink-0 flex-col items-center gap-1 border-r border-[#dedee3] bg-[#f2f2f4] py-2 dark:border-white/10 dark:bg-[#232326]">
+    <nav aria-label={t('app.name')} className="app-sidebar no-drag">
       {navItems.map((item) => (
         <button
           key={item.id}
           type="button"
           onClick={() => setCurrentPage(item.id)}
+          aria-current={currentPage === item.id ? 'page' : undefined}
           aria-label={t(`nav.${item.id}`)}
           title={t(`nav.${item.id}`)}
-          className={`no-drag relative flex size-10 items-center justify-center rounded-lg transition-colors duration-100 ${
-            currentPage === item.id
-              ? 'bg-white text-[#006bd6] shadow-sm dark:bg-white/10 dark:text-[#53a9ff]'
-              : 'text-[#69696f] hover:bg-black/[0.045] hover:text-[#1d1d1f] dark:text-[#a6a6ab] dark:hover:bg-white/[0.07] dark:hover:text-white'
-          }`}
+          className={item.id === 'devices' ? 'sidebar-utility' : undefined}
         >
-          {currentPage === item.id && <span className="absolute -left-1 h-5 w-0.5 rounded-r bg-[#0078d4]" />}
-          <Icon name={item.icon} size={18} />
+          <Icon name={item.icon} size={19} />
+          <span>{t(`nav.${item.id}`)}</span>
         </button>
       ))}
-    </aside>
+    </nav>
   )
 }
